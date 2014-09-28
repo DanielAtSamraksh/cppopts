@@ -1,0 +1,53 @@
+* design of argument parsing
+
+** cases
+* single letter option without argument
+* single letter option with attached argument
+* single letter option with adjacent argument
+* single letter options appended together
+* multiple letter option without argument
+* multiple letter option with attached argument (=)
+* multiple letter option with adjacent argument
+* end of arguments (--)
+* invalid arguments
+
+** strategy options
+*** Option 1:
+Process normal arguments normally.
+Arrange appended args in connonical form.
+
+1. Try to process the field assuming it's in normal form.
+   If the attached flag is set, add a '-' to it before processing.
+
+   If the argument is short, it will match completely, get the value from the next field. 
+   Same for long argument.
+
+2. If the argument was not processed, try to separate it.
+   a) If the argument is long, split at equal sign.
+   b) If the argument is short, split off first letter and set "attached" flag to remember when processing the next fleld that it had been attached.
+
+*** Option 2:
+Track where you are and process explicitly. Treat simple non-appended arguments as a normal case of the complicated case.
+
+**** get the right context
+-- -> stop processing
+--* -> process long argument
+- -> single dash argument
+-* -> process single argument(s)
+
+**** process long argument
+***** Boolean (takes no value) 
+Match name completely.
+
+***** Valued (takes a value)
+Match name completely and get the value from the next token.
+Or
+Match name and = and get the value from what follows the equal sign.
+
+**** process short arguments
+***** Boolean (takes no value) 
+Match letter. Try to match another short argument.
+
+***** Valued (takes a value) 
+Match letter completely. Get value from next token.
+Match letter and get the value from what's appended.
