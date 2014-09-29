@@ -1,15 +1,15 @@
 * design of argument parsing
 
 ** cases
-* single letter option without argument
-* single letter option with attached argument
-* single letter option with adjacent argument
-* single letter options appended together
-* multiple letter option without argument
-* multiple letter option with attached argument (=)
-* multiple letter option with adjacent argument
-* end of arguments (--)
-* invalid arguments
+ * single letter option without argument
+ * single letter option with attached argument
+ * single letter option with adjacent argument
+ * single letter options appended together
+ * multiple letter option without argument
+ * multiple letter option with attached argument (=)
+ * multiple letter option with adjacent argument
+ * end of arguments (--)
+ * invalid arguments
 
 ** strategy options
 *** Option 1:
