@@ -48,11 +48,13 @@ class parameters_t {
  public:
   void process_long_parameter( int argc, char **argv, int &i){
     char *a = argv[i];
+    string p;
     printf("process_long_parameter %s\n", a);
 
-    if ( eq ("--long-bool", a )) { this->longBool = true; }
-    else if ( startswith ( "--long-bool=", a )) {
-      convert(a+strlen("--long-bool="), this->longBool );
+    p = "--long-bool"; 
+    if ( eq (p.c_str(), a )) { this->longBool = true; }
+    else if ( startswith ( (p+"=").c_str(), a )) {
+      convert(a+(p+"=").size(), this->longBool );
     }
 
     else {
