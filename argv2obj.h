@@ -9,8 +9,6 @@
 
 using std::string;
 
-int convert ( char * s ) { return atoi ( s ); }
-
 int min (int i, int j) { return i < j? i: j; }
 
 bool startswith ( const string s1, const char* s2) { 
@@ -31,24 +29,30 @@ bool eq ( const char* s1, const char* s2 ) {
   return strcmp ( s1, s2 ) == 0; 
 }
 
+bool convert ( char *s, int &i ) { i = atoi ( s ); return true; }
 
+bool convert ( char *s, bool &b ) {
+  if ( eq ( s, "1" )) b = true;
+  else if ( eq ( s, "0" )) b = false;
+  else if ( eq ( s, "true" )) b = true;
+  else if ( eq ( s, "false" )) b = false;
+  else {
+    printf ( "Value error: %s is not a bool.\n", s );
+    // exit ( 1 );
+    return false;
+  }
+  return true;
+}
 
 class parameters_t {
  public:
   void process_long_parameter( int argc, char **argv, int &i){
     char *a = argv[i];
     printf("process_long_parameter %s\n", a);
+
     if ( eq ("--long-bool", a )) { this->longBool = true; }
-    else if ( startswith ( "--long-bool", a )) { 
-      if ( eq ( "--long-bool=true", a )) { this->longBool = true; }
-      else if ( eq ( "--long-bool=1", a )) { this->longBool = true; }
-      else if ( eq ( "--long-bool=false", a )) { this->longBool = false; }
-      else if ( eq ( "--long-bool=0", a )) { this->longBool = false; }
-      else if ( eq ( "--long-bool=", a )) { this->longBool = false; }
-      else {
-	printf("Unrecognized value for --long-bool (%s).\n", a);
-	// exit ( 1 );
-      }
+    else if ( startswith ( "--long-bool=", a )) {
+      convert(a+strlen("--long-bool="), this->longBool );
     }
 
     else {
@@ -68,11 +72,11 @@ class parameters_t {
 	  exit ( 1 );
 	}
 	i++;
-	this->n = atoi ( argv[i] );
+	convert ( argv[i], this->n );
 	break;
       }
       else if ( startswith ( "n", a )) { 
-	this->n = atoi ( a+1 );
+	convert ( a+1, this->n );
 	break;
       }
 
@@ -108,8 +112,12 @@ class parameters_t {
 	printf("skipping parameter %s\n", argv[i]);
       }
     }
+
+    // check
     printf ("parameters are: \n int n = %d\n bool i = %d\n bool longBool = %d\n\n",
 	    this->n, this->i, this->longBool );
+
+    
   };
   int n; 
   bool i, longBool;
