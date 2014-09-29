@@ -20,7 +20,7 @@ bool startswith ( const string s1, const char* s2) {
 /* The second argument starts with the first argument. */
 bool startswith ( const char* s1, const char* s2 ) {
   int n = strlen( s1 ); 
-  return n <= strlen( s2 ) || 0 == strncmp ( s1, s2, n );
+  return n <= strlen( s2 ) && 0 == strncmp ( s1, s2, n );
 }
 
 bool eq ( const string s1, const char* s2) { 
@@ -31,97 +31,82 @@ bool eq ( const char* s1, const char* s2 ) {
   return strcmp ( s1, s2 ) == 0; 
 }
 
+
+
 class parameters_t {
  public:
+  void process_long_parameter( int argc, char **argv, int &i){
+    char *a = argv[i];
+    printf("process_long_parameter %s\n", a);
+    if ( eq ("--long-bool", a )) { this->longBool = true; }
+    else if ( startswith ( "--long-bool", a )) { 
+      if ( eq ( "--long-bool=true", a )) { this->longBool = true; }
+      else if ( eq ( "--long-bool=1", a )) { this->longBool = true; }
+      else if ( eq ( "--long-bool=false", a )) { this->longBool = false; }
+      else if ( eq ( "--long-bool=0", a )) { this->longBool = false; }
+      else if ( eq ( "--long-bool=", a )) { this->longBool = false; }
+      else {
+	printf("Unrecognized value for --long-bool (%s).\n", a);
+	// exit ( 1 );
+      }
+    }
+
+    else {
+      printf("Unrecognized long parameter %s\n", argv[i]);
+      // exit ( 1 );
+    }
+  };
+
+  void process_short_parameter( int argc, char **argv, int &i ) {
+    printf("process_short_parameter %s\n", argv[i]);
+    for ( char* a = argv[i]+1; *a != '\0'; a++ ) {
+      if ( eq ( "i", a )) { this->i = true; }
+
+      else if ( eq ( "n", a )) {
+	if ( i+1 >= argc ) {
+	  printf("Missing argument for %s\n", a);
+	  exit ( 1 );
+	}
+	i++;
+	this->n = atoi ( argv[i] );
+	break;
+      }
+      else if ( startswith ( "n", a )) { 
+	this->n = atoi ( a+1 );
+	break;
+      }
+
+      else {
+	printf("Unrecognized short parameter %s\n", a);
+	// exit ( 1 );
+	break;
+      }
+    }
+  };
+  
   parameters_t () {};
   parameters_t ( int argc, char ** argv ) { this->init(argc, argv); };
   void init(int argc, char **argv) {
-    char *program = argv[0];
-    //    printf ( "argc = %d\n", argc );
-    int attached = -1; // track which arguments are attached.
-    int mallocced = -1; // track which arguments are mallocced
     for (int i = 1; i < argc; i++) {
-      printf ( "processing argv[%d] = %s\n", i, argv[i] );
-      // process parameters in normal form (space separated)
-
-      // short (-n) val
-      if ( eq ( ( attached == i? "n": "-n" ), argv[i] )) {
-	if ( i >= argc) {
-	  printf ( "No value for n, argc = %d\n", argc ); 
-	  exit(1); 
-	}
-	this-> n = convert ( argv[i+1] );
-	i++; // skip the next field because it was used as a value
-      }
-
-      // -i (bool)
-      else if ( eq ( attached == i? "i": "-i", argv[i] )) {
-	this -> i = true;
-      }
-
-      else if ( eq ( "--long-bool", argv[i] )) {
-	if ( attached == i+1 ) {
-	  if ( eq ( "true", argv[i+1] ) || eq ( "1", argv[i+1] )) {
-	    this -> longBool = true;
-	  }
-	  else if ( eq ( "False", argv[i+1] ) || eq ( "0", argv[i+1] )) {
-	    this -> longBool = false;
-	  }
-	  else {
-	    printf("Can't set %s to unrecognized value %s.\n", argv[i], argv[i+1]);
-	    exit(1);
-	  }
-	  i++;
-	}
-	else {
-	  this -> longBool = false;
-	}
-      }
-
-      // special cases
-
       // -- no more processing
-      else if ( eq ( "--", argv[i] )) { 
-	printf ("End of arguments reached. The rest of the arguments are:\n");
+      if ( eq ( "--", argv[i] )) { 
+	printf ( "End of arguments reached. The rest of the arguments are:\n" );
 	for (; i < argc; i++) {
 	  printf("  %s\n", argv[i]);
 	}
       }
-
-      // unrecognized long parameter
-      else if ( startswith( "--", argv[i] )) {
-	if ( char* sep = strchr( argv[i], '=' )) {
-	  // --*=* long parameter set with =
-	  // separate
-	  *sep = '\0';
-	  argv[i-1] = argv[i]; // point the previous argument to this one.
-	  argv[i] = sep+1; // point this argument to what's after the equal sign
-	  i -= 2; // back up two  to process the previous argument next.
-	}
-	else { // unknown argument
-	  printf ( "Long parameter %s is unknown.\n", argv[i] );
-	}
+      else if ( eq ( "-", argv[i] )) {
+	printf ( "Single dash found\n" );
       }
-
-      // unrecognized short parameter
-      else if ( attached == i || startswith( "-", argv[i] )) {
-	int len = attached == i ? 1: 2;
-	if ( strlen( argv[i] ) > len ) { // multiple short args, separate
-	  if ( ! ( argv[i-1] = attached == i? strdup("--"): strndup( argv[i], 2 ))) {
-	    printf("Can't duplicate string in file %s line %d\n", __FILE__, __LINE__);
-	    exit(1);
-	  }
-	  mallocced = i-1;
-	  if ( attached == i ) argv[i-1][1] = argv[i][0]; // copy argument
-	  attached = i; // this field is now attached
-	  argv[i] += len; // point to the next parameter
-	  i -= 2; // back up two  to process the previous argument next.
-	}
-	else { // unknown short parameter
-	  printf ( "Short parameter %s is unknown.\n", argv[i] );
-	}
+      else if ( startswith ( "--", argv[i] )) { // process long parameter
+	process_long_parameter(argc, argv, i);
       }
-      if (mallocced == i) { free ( argv[i] ); }
+      else if ( startswith ( "-", argv[i] )) { // process short parameter
+	process_short_parameter(argc, argv, i);
+      }
+      else {
+	printf("skipping parameter %s\n", argv[i]);
+      }
     }
     printf ("parameters are: \n int n = %d\n bool i = %d\n bool longBool = %d\n\n",
 	    this->n, this->i, this->longBool );

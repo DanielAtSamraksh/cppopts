@@ -1,6 +1,6 @@
 
 
-all: test
+all: clean test
 
 test: test.cpp argv2obj.h Makefile
 	g++ test.cpp -o test
@@ -9,7 +9,7 @@ test: test.cpp argv2obj.h Makefile
 	./test -i
 	./test
 	./test -n 2 -i -3
-	./test --long-bool=5 
+	./test --long-bool=5 || echo "bad\n"
 	./test --long-bool=1 
 	./test --long-bool=false -n 5 -ifalse
 
