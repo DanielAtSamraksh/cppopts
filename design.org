@@ -2,7 +2,13 @@
 
 ** dissattisfactions
  - we modify the input, turning '=' into '\0'
- - don't use strdup
+ - don't use strdup because of memory leaks
+*** solutions
+args_t which keeps all the argvs together in a buffer and releases the buffer on destruction.
+We need to store the buff = sum of all the lengths of the argvs.
+We need to store the argv pointers which is an array of string pointers of length argc. 
+On destruction, we need to destroy this. 
+lookup delete[];
 
 
 ** cases
