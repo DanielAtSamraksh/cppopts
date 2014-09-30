@@ -4,14 +4,7 @@ all: clean test
 
 test: test.cpp argv2obj.h Makefile
 	g++ test.cpp -o test
-	./test -n 2 -i
-	./test -n 2
-	./test -i
-	./test
-	./test -n 2 -i -3
-	./test --long-bool=5 || echo "bad\n"
-	./test --long-bool=1 
-	./test --long-bool=false -n 5 -ifalse
+	./test -S'Short String' -bi2 -s string --string=aString -f 3.4 --bool=false --chars=charstring --float=3.24 --int 5 -i6
 
 clean: 
 	rm -f test

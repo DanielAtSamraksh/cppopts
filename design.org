@@ -1,5 +1,10 @@
 * design of argument parsing
 
+** dissattisfactions
+ - we modify the input, turning '=' into '\0'
+ - don't use strdup
+
+
 ** cases
  * single letter option without argument
  * single letter option with attached argument
@@ -26,6 +31,7 @@ Arrange appended args in connonical form.
    a) If the argument is long, split at equal sign.
    b) If the argument is short, split off first letter and set "attached" flag to remember when processing the next fleld that it had been attached.
 
+
 *** Option 2:
 Track where you are and process explicitly. Treat simple non-appended arguments as a normal case of the complicated case.
 
@@ -34,6 +40,17 @@ Track where you are and process explicitly. Treat simple non-appended arguments 
 --* -> process long argument
 - -> single dash argument
 -* -> process single argument(s)
+
+**** processing arguments
+Arguments can either not take a value (boolean flags) or take a value.
+
+Short flogs can be determined by merely examining the next char.
+
+Long flogs can be determined by examining a string. It is also possible to turn off a flag by appending =0 or =false. In any case, we just examine a string.
+
+Short values can be determined by examining a char and string. The string is either the rest of the current parameter or the next parameter if the char is at the end of the current parameter.
+
+Long values can be determined by examining a string and a string. The string is either the part after the '=' or the next parameter. 
 
 **** process long argument
 ***** Boolean (takes no value) 
@@ -51,3 +68,4 @@ Match letter. Try to match another short argument.
 ***** Valued (takes a value) 
 Match letter completely. Get value from next token.
 Match letter and get the value from what's appended.
+
