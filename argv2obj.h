@@ -30,13 +30,13 @@ bool eq ( const char* s1, const char* s2 ) {
   return strcmp ( s1, s2 ) == 0; 
 };
 
-bool convert ( const char *s, int &i ) {
+bool atoval ( const char *s, int &i ) {
   printf("converting %s to int %d\n", s, atoi(s));
   i = atoi ( s );
   return true;
 };
 
-bool convert ( const char *s, bool &b ) {
+bool atoval ( const char *s, bool &b ) {
   if ( eq ( s, "1" )) b = true;
   else if ( eq ( s, "0" )) b = false;
   else if ( eq ( s, "true" )) b = true;
@@ -50,19 +50,19 @@ bool convert ( const char *s, bool &b ) {
   return true;
 };
 
-bool convert ( const char *s, string &str ) {
+bool atoval ( const char *s, string &str ) {
   str = (string) s;
   printf("converting %s to string %s\n", s, str.c_str());
   return true;
 }
 
-bool convert ( const char *s, char *&str ) {
+bool atoval ( const char *s, char *&str ) {
   str = strdup ( s );
   printf("converting %s to string %s\n", s, str);
   return true;
 }
 
-bool convert ( const char *s, double &f ) {
+bool atoval ( const char *s, double &f ) {
   f = atof(s);
   printf("converting %s to double %f\n", s, f);
   return true;
@@ -106,27 +106,27 @@ class parameters_t {
 	printf( "processing long option %s with possible value %s, bool value %s\n",
 		argv[i], val, boolval );
 	
-	// check the long parameters, convert will do the right thing
+	// check the long parameters, atoval will do the right thing
 	// because it tracks the type of the variable.
 	if ( eq ( "--bool", argv[i] ))   {
-	  convert ( boolval, this->longBool );
+	  atoval ( boolval, this->longBool );
 	}
 	else if ( eq ( "--int", argv[i] ))    {
-	  convert ( val, this->longInt );
+	  atoval ( val, this->longInt );
 	  if ( ! eqsign ) i++; // skip the value parameter if it
 			       // wasn't attached, must do this for
 			       // all non-bools.
 	}
 	else if ( eq ( "--float", argv[i] )) {
-	  convert ( val, this->longFloat );
+	  atoval ( val, this->longFloat );
 	  if ( ! eqsign ) i++; // skip the value parameter
 	}
 	else if ( eq ( "--string", argv[i] )) {
-	  convert ( val, this->longString );
+	  atoval ( val, this->longString );
 	  if ( ! eqsign ) i++; // skip the value parameter
 	}
 	else if ( eq ( "--chars", argv[i] )) {
-	  convert ( val, this->longChars );
+	  atoval ( val, this->longChars );
 	  if ( ! eqsign ) i++; // skip the value parameter
 	}
 	else {
@@ -155,10 +155,10 @@ class parameters_t {
 	    this->shortChars = val; if (!attached) i++; break;
 	  }
 	  if ( argv[i][j] == 'i' ) {
-	    convert ( val, this->shortInt ); if (!attached) i++; break;
+	    atoval ( val, this->shortInt ); if (!attached) i++; break;
 	  }
 	  if ( argv[i][j] == 'f' ) {
-	    convert ( val, this->shortFloat ); if (!attached) i++; break;
+	    atoval ( val, this->shortFloat ); if (!attached) i++; break;
 	  }
 	  printf( "unknown short parameter %c\n", argv[i][j] );
 	}
