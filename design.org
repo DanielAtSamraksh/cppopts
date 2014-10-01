@@ -3,12 +3,23 @@
 ** dissattisfactions
  - we modify the input, turning '=' into '\0'
  - don't use strdup because of memory leaks
+ - call as standalone program and as lib.
+
 *** solutions
+**** args_t
 args_t which keeps all the argvs together in a buffer and releases the buffer on destruction.
 We need to store the buff = sum of all the lengths of the argvs.
 We need to store the argv pointers which is an array of string pointers of length argc. 
 On destruction, we need to destroy this. 
 lookup delete[];
+**** when called as standalone, take argc, argv and output shell instructions
+
+called as:
+  > `argprocessor @args`
+
+returns things like:
+export var1=val1 var2=val2 . . . 
+
 
 
 ** cases
