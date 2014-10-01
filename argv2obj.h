@@ -7,9 +7,10 @@
 #include <cstdlib>  /* atoi, exit */
 #include <string>   /* string */
 #include <cctype>   /* tolower */
-
+#include <typeinfo> /* (typeid result).name == "bool" */
 using std::string;
 
+    
 int min (int i, int j) { return i < j? i: j; };
 
 bool startswith ( const string s1, const char* s2) { 
@@ -31,7 +32,7 @@ bool eq ( const char* s1, const char* s2 ) {
 };
 
 bool atoval ( const char *s, int &i ) {
-  printf("converting %s to int %d\n", s, atoi(s));
+  // printf("converting %s to int %d\n", s, atoi(s));
   i = atoi ( s );
   return true;
 };
@@ -46,25 +47,25 @@ bool atoval ( const char *s, bool &b ) {
     // exit ( 1 );
     return false;
   }
-  printf("converting %s to bool %d\n", s, b);
+  // printf("converting %s to bool %d\n", s, b);
   return true;
 };
 
 bool atoval ( const char *s, string &str ) {
   str = (string) s;
-  printf("converting %s to string %s\n", s, str.c_str());
+  // printf("converting %s to string %s\n", s, str.c_str());
   return true;
 }
 
 bool atoval ( const char *s, char *&str ) {
   str = strdup ( s );
-  printf("converting %s to string %s\n", s, str);
+  // printf("converting %s to string %s\n", s, str);
   return true;
 }
 
 bool atoval ( const char *s, double &f ) {
   f = atof(s);
-  printf("converting %s to double %f\n", s, f);
+  // printf("converting %s to double %f\n", s, f);
   return true;
 }
 
@@ -75,121 +76,258 @@ char* tolower(char* s) {
   return s;
 };
 
-class parameters_t {
- public:
-  /// Return true if flag matches. Set variable as side effect.
-  parameters_t () {};
-  parameters_t ( int argc, char ** argv ) { this->init(argc, argv); };
-  void init(int argc, char **argv) {
-    for (int i = 1; i < argc; i++) {
-      printf( "\nargv[%d] = %s\n", i, argv[i] );
-      
-      // -- no more processing
-      if ( eq ( "--", argv[i] )) { 
-	printf ( "End of arguments reached. The rest of the arguments are:\n" );
-	for (; i < argc; i++) {
-	  printf("  %s\n", argv[i]);
-	}
-      }
-      else if ( eq ( "-", argv[i] )) {
-	printf ( "Single dash found\n" );
-      }
-      else if ( startswith ( "--", argv[i] )) { // process long parameter
-	// find the value field, boolean flags are special because
-	// they can only be set with explicit equal sign.
-	char *val, *boolval;
-	char *eqsign = strchr ( argv[i], '=' ); // An equal sign precedes the value
-	if ( eqsign ) { *eqsign = '\0'; val = eqsign+1;  boolval = val; }
-	else if ( i + 1 < argc )      { val = argv[i+1]; boolval = 0; }
-	else                          { val = 0;         boolval = 0; }
 
-	printf( "processing long option %s with possible value %s, bool value %s\n",
-		argv[i], val, boolval );
-	
-	// check the long parameters, atoval will do the right thing
-	// because it tracks the type of the variable.
-	if ( eq ( "--bool", argv[i] ))   {
-	  atoval ( boolval, this->longBool );
+class flag_t {
+ public:
+  bool value;
+  char *help;     // help text
+  char *shorts;   // short arguments
+  char **longv;   // long arguments
+  int longc;  // number of long arguments
+
+  flag_t ( ) {};
+  flag_t ( char *_shorts, char** _longv, int _longc ) {
+    init(_shorts, _longv, _longc);
+  };
+  
+  void init ( char *_shorts, char** _longv, int _longc ) {
+    this->shorts = _shorts;
+    this->longv = _longv;
+    this->longc = _longc;
+  };
+  
+  /// Parse argv starting at argv[i][j]. Return true on error. Update
+  /// i and j as needed.
+  bool parse ( int &i, int &j, const int argc, const char **argv ) {
+    // i = index into argv, j = index into argv[i]
+    if ( i >= argc) return false; // no more arguments
+    if ( j > 0 && j >= strlen ( argv[i] )) { 
+      i++; j = 0; // move to next argument if at the end argv[i]
+      if ( i >= argc) return false; // return if no more arguments
+    }
+    if ( '-' == argv[i][0] ) {
+      if ('-' == argv[i][1]) {
+	// -- means stop processing
+	if ('\0' == argv[i][2]) return false;
+	j=2;
+	return this->parselong ( i, j, argc, argv );
+      }
+      if (j < 1) j = 1;
+      printf("parsing short i=%d j=%d %c\n", i, j, argv[i][j]);
+      return parseshort ( i, j, argc, argv );
+    }
+    return false; // not long or short option, just return
+  };
+
+  bool parselong ( int &i, int &j, const int argc, const char **argv ) {
+    // we start pointing at the long
+    // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
+    // printf("i = %d, j = %d\n", i, j);
+    
+    for ( int _i = 0; _i < this->longc; _i++ ) {
+      // printf("checking %s, parsing long,  %s %s\n", this->longv[_i], argv[i]+j, argv[i]);
+      char *l = this->longv[_i];
+      if ( startswith ( l, argv[i]+2 ) ) {
+	// printf("startswith %s %s\n", this->longv[_i], argv[i]+2);
+	char char_after = argv[i][ 2 + strlen(l) ];
+	switch ( char_after ) {
+	case '\0': // value in next argument
+	  this->value = true;
+	  i++; j = 0;
+	  return false;
+	case '=': // value in this argument
+	  atoval ( argv[i]+2+strlen(l)+1, this->value );
+	  i += 1; j = 0;
+	  return false;
+	default: ; // is longer than what we're looking for
 	}
-	else if ( eq ( "--int", argv[i] ))    {
-	  atoval ( val, this->longInt );
-	  if ( ! eqsign ) i++; // skip the value parameter if it
-			       // wasn't attached, must do this for
-			       // all non-bools.
+      }
+    }
+    return false;
+  };
+  
+  bool parseshort ( int &i, int &j, const int argc, const char **argv ) {
+    // check shorts
+    printf("flag parseshort\n");
+    if (j < 1) { printf("parse error, j <= 0\n"); exit(1); }
+    for ( int _i = strlen(this->shorts)-1; _i >= 0; _i-- ) {
+      if ( this->shorts[_i] == argv[i][j] ) {
+	this->value = true;
+	j++;
+	return false;
+      }
+    }
+    return false;
+  };
+
+};
+
+template < class T>
+class parameter_t {
+ public:
+  T value;
+  char *help;     // help text
+  char *shorts;   // short arguments
+  char **longv;   // long arguments
+  int longc;  // number of long arguments
+
+  void init ( char *_shorts, char** _longv, int _longc ) {
+    this->shorts = _shorts;
+    this->longv = _longv;
+    this->longc = _longc;
+  };
+  
+  /// Parse argv starting at argv[i][j]. Return true on error. Update
+  /// i and j as needed.
+  bool parse ( int &i, int &j, const int argc, const char **argv ) {
+    // i = index into argv, j = index into argv[i]
+    if ( i >= argc) return false; // no more arguments
+    if ( j > 0 && j >= strlen ( argv[i] )) { 
+      i++; j = 0; // move to next argument if at the end argv[i]
+      if ( i >= argc) return false; // return if no more arguments
+    }
+    if ( '-' == argv[i][0] ) {
+      if ('-' == argv[i][1]) {
+	// -- means stop processing
+	if ('\0' == argv[i][2]) return false;
+	j=2;
+	return this->parselong ( i, j, argc, argv );
+      }
+      if (j < 1) j = 1;
+      // printf("parsing short i=%d j=%d %c\n", i, j, argv[i][j]);
+      return parseshort ( i, j, argc, argv );
+    }
+    return false; // not long or short option, just return
+  };
+
+  bool parselong ( int &i, int &j, const int argc, const char **argv ) {
+    // we start pointing at the long
+    // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
+    // printf("i = %d, j = %d\n", i, j);
+    
+    for ( int _i = 0; _i < this->longc; _i++ ) {
+      // printf("checking %s, parsing long,  %s %s\n", this->longv[_i], argv[i]+j, argv[i]);
+      char *l = this->longv[_i];
+      if ( startswith ( l, argv[i]+2 ) ) {
+	// printf("startswith %s %s\n", this->longv[_i], argv[i]+2);
+	char char_after = argv[i][ 2 + strlen(l) ];
+	switch ( char_after ) {
+	case '\0': // value in next argument
+	  // printf("type = %s\n", typeid(T).name());
+	  if (! strncmp(typeid(T).name(), "bool", 1)) {
+	    atoval("true", this->value);
+	    i++; j = 0;
+	  }
+	  else if ( i+1 >= argc ) {
+	    printf("Missing argument for option %s\n", argv[i]);
+	    i++; j=0;// avoid infinite loop
+	    return true;
+	  }
+	  else {
+	    atoval (argv[i+1], this->value);
+	    i += 2; j = 0;
+	  }
+	  return false;
+	case '=': // value in this argument
+	  atoval ( argv[i]+2+strlen(l)+1, this->value );
+	  i += 1; j = 0;
+	  return false;
+	default: ; // is longer than what we're looking for
 	}
-	else if ( eq ( "--float", argv[i] )) {
-	  atoval ( val, this->longFloat );
-	  if ( ! eqsign ) i++; // skip the value parameter
+      }
+    }
+    return false;
+  };
+  
+  bool parseshort ( int &i, int &j, const int argc, const char **argv ) {
+    // check shorts
+    if (j < 1) { printf("parse error, j <= 0\n"); exit(1); }
+    for ( int _i = strlen(this->shorts)-1; _i >= 0; _i-- ) {
+      // printf("type = %s\n", typeid(T).name());
+      if ( this->shorts[_i] == argv[i][j] ) {
+	// printf("%c matches %c, in %s, 2 over: %s\n", argv[i][j], this->shorts[_i], argv[i], argv[i]+2);
+	if (! strncmp(typeid(T).name(), "bool", 1)) {
+	  atoval("true", this->value);
+	  j++;
 	}
-	else if ( eq ( "--string", argv[i] )) {
-	  atoval ( val, this->longString );
-	  if ( ! eqsign ) i++; // skip the value parameter
+	else if (j+1 < strlen(argv[i])) {
+	  atoval ( argv[i]+j+1, this->value );
+	  i++; j = 0;
 	}
-	else if ( eq ( "--chars", argv[i] )) {
-	  atoval ( val, this->longChars );
-	  if ( ! eqsign ) i++; // skip the value parameter
+	else if ( i + 1 < argc ) {
+	  atoval ( argv[i+1], this->value );
+	  i += 2; j=0;
 	}
 	else {
-	  printf( "Unknown long parameter %s\n", argv[i] );
+	  printf ("missing value for short option %c in %s\n", this->shorts[_i], argv[i]);
+	  i++; j=0; // avoid infinite loop if return value is not checked.
+	  return true;
 	}
-      } // end long arguments
-
-      else if ( startswith ( "-", argv[i] )) { // process short parameter
-	// short arguments can be concatenated, so we just process one char at a time.
-	int len = strlen(argv[i]);
-	for ( int j = 1; j < len; j++ ) {
-	  // the val is the rest of this parameter or the next
-	  bool attached = j+1 < len;
-	  char *val = attached? argv[i]+j+1: i+1 < argc? argv[i+1]: 0;
-
-	  printf ( " short arg, processing %c, attached %d, val %s\n",
-		   argv[i][j], attached, val );
-	  
-	  if ( argv[i][j] == 'b' ) {
-	    this->shortBool = true; continue; // booleans just continue
-	  }
-	  if ( argv[i][j] == 'S' ) {
-	    this->shortString = val; if (!attached) i++; break;
-	  }
-	  if ( argv[i][j] == 's' ) {
-	    this->shortChars = val; if (!attached) i++; break;
-	  }
-	  if ( argv[i][j] == 'i' ) {
-	    atoval ( val, this->shortInt ); if (!attached) i++; break;
-	  }
-	  if ( argv[i][j] == 'f' ) {
-	    atoval ( val, this->shortFloat ); if (!attached) i++; break;
-	  }
-	  printf( "unknown short parameter %c\n", argv[i][j] );
-	}
-      } // end short arguments
-
-      else { // not prefixed by -
-	printf("skipping parameter %s\n", argv[i]);
+	return false;
       }
-    } // end process argv
+    }
+    return false;
+  };
+
+  parameter_t () {};
+  parameter_t ( char *_shorts, char** _longv, int _longc ) {
+    init(_shorts, _longv, _longc);
+  };
+  
+};
+
+
+class parameters_t {
+ public:
+
+  //  flag_t myBool;
+  parameter_t < bool > myBool;
+  parameter_t < int > myInt;
+  parameter_t < double > myFloat;
+  parameter_t < string > myString;
+  parameter_t < char* > myChars;
+  
+  
+  /// Return true if flag matches. Set variable as side effect.
+  parameters_t () {};
+  parameters_t ( int argc, const char ** argv ) { this->init(argc, argv); };
+  void init(int argc, const char **argv) {
+    
+    char *cs[] = {(char*) "bool", (char*) "my-bool"};
+    this->myBool.init((char*) "b", cs, 2);
+    
+    char *cs2[] = {(char*) "int", (char*) "my-int"};
+    this->myInt.init((char*) "i", cs2, 2);
+
+    char *cs3[] = {(char*) "float", (char*) "my-float"};
+    this->myFloat.init((char*) "f", cs3, 2);
+    
+    char *cs4[] = {(char*) "string", (char*) "my-string"};
+    this->myString.init((char*) "S", cs4, 2);
+    
+    char *cs5[] = {(char*) "chars", (char*) "my-chars"};
+    this->myChars.init((char*) "s", cs5, 2);
+  
+    int i=1, j=0;
+    int oldi, oldj;
+    do {
+      oldi = i; oldj = j;
+      myBool.parse ( i, j, argc, argv );
+      myInt.parse ( i, j, argc, argv );
+      myFloat.parse ( i, j, argc, argv );
+      myString.parse ( i, j, argc, argv );
+      myChars.parse ( i, j, argc, argv );
+    } while ( oldi != i || oldj != j );
 
     // check 
     printf ( "\nparameters are: \n" );
-    printf ( " short bool = %d\n", this->shortBool );
-    printf ( " short int = %d\n", this->shortInt );
-    printf ( " short float = %f\n", this->shortFloat );
-    printf ( " short string = %s\n", this->shortString.c_str() );
-    printf ( " short chars = %s\n", this->shortChars );
-
-    printf ( " long bool = %d\n", this->longBool );
-    printf ( " long int = %d\n", this->longInt );
-    printf ( " long float = %f\n", this->longFloat );
-    printf ( " long string = %s\n", this->longString.c_str() );
-    printf ( " long chars = %s\n", this->longChars );
-
+    printf ( " bool = %d\n", this->myBool.value );
+    printf ( " int = %d\n", this->myInt.value );
+    printf ( " float = %f\n", this->myFloat.value );
+    printf ( " string = %s\n", this->myString.value.c_str() );
+    printf ( " chars = %s\n", this->myChars.value );
+    printf ( "\n\n" );
   };
-
-  bool shortBool, longBool;
-  int shortInt, longInt;
-  double shortFloat, longFloat;
-  string shortString, longString;
-  char *shortChars, *longChars;
 
 };
 

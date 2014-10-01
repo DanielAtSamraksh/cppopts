@@ -1,8 +1,10 @@
 * design of argument parsing
 
 ** dissattisfactions
- - we modify the input, turning '=' into '\0'
- - don't use strdup because of memory leaks
+ - error reporting, use help
+ - usage
+ - compile a usage into code
+
  - call as standalone program and as lib.
 
 *** solutions
