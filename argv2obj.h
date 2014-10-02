@@ -254,6 +254,11 @@ class parameters_t {
   // Use a vector to store options to keep them in order.  Name lookup
   // is linear search which is ok if number of parameters are small.
   vector < abstractParameter_t* > options;
+  vector < string > positionals, unknowns; // the part of the argvs not parsed as options
+
+  int size() { return positionals.size(); };
+
+  string operator[] ( int i ) { return positionals[i]; };
 
   abstractParameter_t* operator[] ( string n ) {
     for ( int i = 0; i < options.size(); i++) {
@@ -274,7 +279,6 @@ class parameters_t {
     return _usage;
   };
 
-  vector < string > positionals, unknowns; // the part of the argvs not parsed as options
   
   void parse (int argc, const char **argv) {
     int i=1, j=0;
@@ -326,9 +330,23 @@ class parameters_t {
       printf("\n\n");
     }
     usage();
-    printf ( "\nparameters are: \n" );
+    printf ( "\noptions are: \n" );
     for ( int i = 0; i < options.size(); i++ ) {
       printf( "%s=%s\n", options[i]->name.c_str(), options[i]->c_str());
+    }
+    if (this->size()) {
+      printf ( "\nPositionals are:\n" );
+      for ( int i = 0; i < this->size(); i++) {
+	printf( " %s\n", (*this)[i].c_str() );
+      }
+      printf( "\n" );
+    }
+    if (this->unknowns.size()) {
+      printf ( "\nUnknowns are:\n" );
+      for ( int i = 0; i < this->unknowns.size(); i++) {
+	printf( " %s\n", this->unknowns[i].c_str() );
+      }
+      printf( "\n\n" );
     }
     // printf ( "\n\n" );
   };
