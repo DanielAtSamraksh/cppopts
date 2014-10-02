@@ -246,8 +246,6 @@ struct parameter_t: public abstractParameter_t {
 };
 
 
-typedef map < string, abstractParameter_t* > pmap_t;
-  
 class parameters_t {
  public:
 
