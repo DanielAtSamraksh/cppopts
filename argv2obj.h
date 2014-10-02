@@ -88,7 +88,18 @@ char* tolower(char* s) {
   return s;
 };
 
+
+/// Abstract class used as a parent class for the real template
+/// class. This allows storage of an array, vector, or map of pointers
+/// to the template class. To work successfully, every method called
+/// on the object pointers stored in the array needs to have a virtual
+/// method defined here.
 struct abstractParameter_t {
+  string name;
+  char s;   // short argument
+  char *l;   // long argument
+  string help;     // help text
+
   //  virtual ~abstractParameter_t() = 0;
   virtual bool parse ( int &i, int &j, const int argc, const char **argv ) = 0;
   virtual const char* c_str() = 0;
@@ -99,31 +110,17 @@ struct abstractParameter_t {
 template < class T >
 struct parameter_t: public abstractParameter_t {
  public:
-  parameter_t () {};
-  parameter_t ( char _short, char* _long ) {
-    init ( _short, _long );
-  };
-  parameter_t ( char _short, char* _long, T def ) {
-    init ( _short, _long, def );
-  };
-  
-  parameter_t ( char _short, char* _long, T def, string help ) {
-    init ( _short, _long, def, help );
-  };
-  
-  parameter_t ( string name, char _short, char* _long, T def, string help ) {
-    init ( name, _short, _long, def, help );
+
+  parameter_t ( T * ptr, string name, char _short, char* _long, T def, string help ) {
+    init ( ptr, name, _short, _long, def, help );
   };
   
   // virtual ~parameter_t(){};
   ~parameter_t(){};
 
-  string name;
-  char s;   // short argument
-  char *l;   // long argument
-  string help;     // help text
   T defaultValue; 
   T value;
+  T *valuePtr;
 
   string _str;
 
@@ -145,30 +142,15 @@ struct parameter_t: public abstractParameter_t {
     return _usage.c_str();
   };
 
-  void init ( string name, char _short, char* _long, T def, string help ) {
-    this->init ( _short, _long);
+  void init ( T* ptr, string name, char _short, char* _long, T def, string help ) {
+    this->valuePtr = ptr;
+    this->s = _short;
+    this->l = _long;
     this->value = def;
+    if (this->valuePtr) *(this->valuePtr) = def;
     this->defaultValue = def;
     this->help = help;
     this->name = name;
-  };
-  
-  void init ( char _short, char* _long, T def, string help ) {
-    this->init ( _short, _long);
-    this->value = def;
-    this->defaultValue = def;
-    this->help = help;
-  };
-  
-  void init ( char _short, char* _long, T def) {
-    this->init ( _short, _long);
-    this->value = def;
-    this->defaultValue = def;
-  };
-  
-  void init ( char _short, char* _long ) {
-    this->s = _short;
-    this->l = _long;
   };
   
   /// Parse argv starting at argv[i][j]. Return true on error. Update
@@ -206,6 +188,7 @@ struct parameter_t: public abstractParameter_t {
 	// printf("type = %s\n", typeid(T).name());
 	if (! strncmp(typeid(T).name(), "bool", 1)) {
 	  atoval("true", this->value);
+	  *(this->valuePtr) = this->value;
 	  i++; j = 0;
 	}
 	else if ( i+1 >= argc ) {
@@ -215,11 +198,13 @@ struct parameter_t: public abstractParameter_t {
 	}
 	else {
 	  atoval (argv[i+1], this->value);
+	  *(this->valuePtr) = this->value;
 	  i += 2; j = 0;
 	}
 	return false;
       case '=': // value in this argument
 	atoval ( argv[i]+2+strlen(l)+1, this->value );
+	*(this->valuePtr) = this->value;
 	i += 1; j = 0;
 	return false;
       default: ; // is longer than what we're looking for
@@ -235,14 +220,17 @@ struct parameter_t: public abstractParameter_t {
     if ( this->s == argv[i][j] ) {
       if (! strncmp(typeid(T).name(), "bool", 1)) {
 	atoval("true", this->value);
+	*(this->valuePtr) = this->value;
 	j++;
       }
       else if (j+1 < strlen(argv[i])) {
 	atoval ( argv[i]+j+1, this->value );
+	*(this->valuePtr) = this->value;
 	i++; j = 0;
       }
       else if ( i + 1 < argc ) {
 	atoval ( argv[i+1], this->value );
+	*(this->valuePtr) = this->value;
 	i += 2; j=0;
       }
       else {
@@ -259,84 +247,117 @@ struct parameter_t: public abstractParameter_t {
 
 
 typedef map < string, abstractParameter_t* > pmap_t;
-
-struct abstractParameterSpec_t {
-  string name;
-  char shortOpt;
-  string longOpt;
-  string help;
-  virtual abstractParameter_t *toParameter()=0;
-};
-
-template < class T >
-struct parameterSpec_t: abstractParameterSpec_t {
-  T defaultValue;
-  parameter_t <T> *toParameter() {
-    new parameter_t <T> ( shortOpt, longOpt, defaultValue, help );
-  };
-};
   
 class parameters_t {
  public:
 
   parameters_t () {};
-  parameters_t ( int argc, const char ** argv ) { this->parse(argc, argv); };
-  pmap_t params;
 
-  abstractParameter_t* operator[] ( string n ) { return params[n]; };
+  // Use a vector to store options to keep them in order.  Name lookup
+  // is linear search which is ok if number of parameters are small.
+  vector < abstractParameter_t* > options;
 
-  template < class T >
-  bool add( parameterSpec_t < T > *p ) {
-    params[p->name]= p->toParameter(); // new parameter_t < T > ( p.shortOpt, p.longOpt, p.defaultValue, p.help );
-    return false;
-  };
-  bool add ( vector < abstractParameterSpec_t* > ps ) {
-    for ( vector < abstractParameterSpec_t* > :: iterator it = ps.begin(); it != ps.end(); it++) {
-      params[(*it)->name] = (*it)->toParameter();
+  abstractParameter_t* operator[] ( string n ) {
+    for ( int i = 0; i < options.size(); i++) {
+      if ( n == options[i]->name ) return options[i];
     }
-    return false;
+      printf( "Lookup error: Parameter %s not found.\n", n.c_str() );
+      exit(1);
   };
 
   string _usage;
   string usage() {
     stringstream s; 
-    for ( pmap_t::iterator it = params.begin(); it != params.end(); it++ ) {
-      s << it->second->usage();
-      printf("%s\n", it->second->usage());
+    for ( int i = 0; i < options.size(); i++ ) {
+      s << options[i]->usage();
+      printf("%s", options[i]->usage());
     };
     _usage = s.str();
     return _usage;
   };
 
+  vector < string > positionals, unknowns; // the part of the argvs not parsed as options
+  
   void parse (int argc, const char **argv) {
-    
-    params["myBool"] = new parameter_t < bool > ("myBool", 'b', (char*) "bool", false, "help bool"); 
-    params["myInt"] = new parameter_t < int > ("myInt", 'i', (char*) "int", 0, "help int"); 
-    params["myFloat"] = new parameter_t < double > ("myFloat", 'f', (char*) "float", 0.0, "help float"); 
-    params["myString"] = new parameter_t < string > ("myString", 'S', (char*) "string", "", "help for myString."); 
-    params["myChars"] = new parameter_t < char* > ("myChars", 's', (char*) "chars", (char *) "", "help for myChars"); 
-
-    // p["myChars"] = &myChars;
-    
     int i=1, j=0;
     int oldi, oldj;
-    do {
+    do { do {
       oldi = i; oldj = j;
-      for ( pmap_t::iterator it = params.begin(); it != params.end(); it++) {
-	it->second->parse ( i, j, argc, argv );
+      for ( int k = 0; k < options.size(); k++ ) {
+	// printf( "  at %s looking for %s\n", argv[i], options[k]->name.c_str() );
+	options[k]->parse ( i, j, argc, argv );
+      }} while ( oldi != i || oldj != j );
+      // we're stuck, find out why
+      if ( i >= argc ) break; // done with args
+      if ( eq ( "--", argv[i] )) { // end of options, parse positionals
+	for ( i++; i < argc; i++ ) positionals.push_back(argv[i]);
+	break;
       }
-    } while ( oldi != i || oldj != j );
+      if ( startswith ( "--", argv[i] ) && j == 2 ) { // unknown long option
+	unknowns.push_back(argv[i]);
+	i++; j = 0;
+	continue;
+      }
+      if ( startswith ( "-", argv[i] ) && j > 1 ) { // unknown short option
+	unknowns.push_back( "-"+ (string)(argv[i]+j) );
+	i++; j = 0;
+	continue;
+      }
+      if ( j != 0 ) { // sanity check
+	printf("error parsing at %s (argument %d), expected the beginning of a positional\n", argv[i], i);
+	exit(1);
+      }
+      // we've reached a positional argument. Consume it and continue.
+      positionals.push_back ( argv[i] ); i++; continue;
+    } while (1); // 
 
     // check
-    
+    printf("\nAfter parsing\n");
+    if (unknowns.size()) {
+      printf ( "unknowns: ");
+      for (int i = 0; i < unknowns.size(); i++) {
+	printf("%s ", unknowns[i].c_str());
+      }
+      printf("\n\n");
+    }
+    if (positionals.size()) {
+      printf ( "positionals: ");
+      for (int i = 0; i < positionals.size(); i++) {
+	printf("%s ", positionals[i].c_str());
+      }
+      printf("\n\n");
+    }
     usage();
     printf ( "\nparameters are: \n" );
-    for ( pmap_t::iterator it = params.begin(); it != params.end(); it++) {
-      printf( "%s=%s\n", it->first.c_str(), it->second->c_str());
+    for ( int i = 0; i < options.size(); i++ ) {
+      printf( "%s=%s\n", options[i]->name.c_str(), options[i]->c_str());
     }
-    printf ( "\n\n" );
+    // printf ( "\n\n" );
   };
+};
 
+struct testParameters_t : parameters_t {
+  bool myBool;
+  int myInt;
+  double myFloat;
+  string myString;
+  char *myChars;
+  
+  testParameters_t() {
+    options.push_back ( new parameter_t < bool > ( &(this->myBool), "myBool", 'b', (char*) "bool", false, "help bool" ));
+    options.push_back ( new parameter_t < int > ( &(this->myInt), "myInt", 'i', (char*) "int", 0, "help int" ));
+    options.push_back ( new parameter_t < double > ( &(this->myFloat), "myFloat", 'f', (char*) "float", 0.0, "help float" ));
+    options.push_back ( new parameter_t < string > ( &(this->myString), "myString", 'S', (char*) "string", "", "help for myString." ));
+    options.push_back ( new parameter_t < char* > ( &(this->myChars), "myChars", 's', (char*) "chars", (char *) "", "help for myChars" ));
+
+    /* printf("After init\n"); this->usage(); */
+    /* printf("myBool = %d\n", myBool ); */
+    /* printf("myInt = %d\n", myInt ); */
+    /* printf("myFloat = %f\n", myFloat ); */
+    /* printf("myString = %s\n", myString.c_str() ); */
+    /* printf("myChars = %s\n", myChars ); */
+
+  };
 };
 
 #endif //  _ARGV2OBJ_H_
