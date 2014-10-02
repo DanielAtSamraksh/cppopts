@@ -25,8 +25,15 @@ class Database_Record{
 };
 
 
+struct C {
+  int a, b;
+  // C(int x, int y) { a=x, b=y; };
+  // C(int x, int y, int z) { a = x+z; b = y+z; };
+};
+
 
 
 int main ( int argc, const char** argv ) {
+  // vector <C> v = { {1,2}, {3,4} };
   parameters_t args ( argc, argv );
 }

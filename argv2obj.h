@@ -18,7 +18,11 @@ using std::vector;
 using std::map;
 using std::stringstream;
 
-    
+template < class T >
+string toString( T x ) {
+  stringstream s; s << x; return s.str();
+};
+
 int min (int i, int j) { return i < j? i: j; };
 
 bool startswith ( const string s1, const char* s2) { 
@@ -88,6 +92,7 @@ struct abstractParameter_t {
   //  virtual ~abstractParameter_t() = 0;
   virtual bool parse ( int &i, int &j, const int argc, const char **argv ) = 0;
   virtual const char* c_str() = 0;
+  virtual const char* usage() = 0;
   ~abstractParameter_t(){};
 };
 
@@ -102,22 +107,63 @@ struct parameter_t: public abstractParameter_t {
     init ( _short, _long, def );
   };
   
+  parameter_t ( char _short, char* _long, T def, string help ) {
+    init ( _short, _long, def, help );
+  };
+  
+  parameter_t ( string name, char _short, char* _long, T def, string help ) {
+    init ( name, _short, _long, def, help );
+  };
+  
   // virtual ~parameter_t(){};
   ~parameter_t(){};
 
-  T value;
-  string _str;
-  const char *c_str() {
-    stringstream s; s << value; this->_str = s.str(); return this->_str.c_str();
-  };
-  
-  char *help;     // help text
+  string name;
   char s;   // short argument
   char *l;   // long argument
+  string help;     // help text
+  T defaultValue; 
+  T value;
 
+  string _str;
+
+  string str() { 
+    stringstream s; s << value; 
+    this->_str = s.str(); // save the returned string 
+    return this->_str; // return the saved copy
+  };
+
+  const char *c_str() {
+    return this->str().c_str();
+  };
+
+  string _usage;
+  const char* usage() {
+    stringstream s;
+    s << "name: " << name << ", short: -" << this->s << ", long: --" << l << ", defaultValue: " << defaultValue << ", value: " << value << ", help: " << help << "\n";
+    _usage = s.str();
+    return _usage.c_str();
+  };
+
+  void init ( string name, char _short, char* _long, T def, string help ) {
+    this->init ( _short, _long);
+    this->value = def;
+    this->defaultValue = def;
+    this->help = help;
+    this->name = name;
+  };
+  
+  void init ( char _short, char* _long, T def, string help ) {
+    this->init ( _short, _long);
+    this->value = def;
+    this->defaultValue = def;
+    this->help = help;
+  };
+  
   void init ( char _short, char* _long, T def) {
     this->init ( _short, _long);
     this->value = def;
+    this->defaultValue = def;
   };
   
   void init ( char _short, char* _long ) {
@@ -214,19 +260,61 @@ struct parameter_t: public abstractParameter_t {
 
 typedef map < string, abstractParameter_t* > pmap_t;
 
+struct abstractParameterSpec_t {
+  string name;
+  char shortOpt;
+  string longOpt;
+  string help;
+  virtual abstractParameter_t *toParameter()=0;
+};
+
+template < class T >
+struct parameterSpec_t: abstractParameterSpec_t {
+  T defaultValue;
+  parameter_t <T> *toParameter() {
+    new parameter_t <T> ( shortOpt, longOpt, defaultValue, help );
+  };
+};
+  
 class parameters_t {
  public:
 
   parameters_t () {};
-  parameters_t ( int argc, const char ** argv ) { this->init(argc, argv); };
-  pmap_t p; 
-  void init(int argc, const char **argv) {
+  parameters_t ( int argc, const char ** argv ) { this->parse(argc, argv); };
+  pmap_t params;
+
+  abstractParameter_t* operator[] ( string n ) { return params[n]; };
+
+  template < class T >
+  bool add( parameterSpec_t < T > *p ) {
+    params[p->name]= p->toParameter(); // new parameter_t < T > ( p.shortOpt, p.longOpt, p.defaultValue, p.help );
+    return false;
+  };
+  bool add ( vector < abstractParameterSpec_t* > ps ) {
+    for ( vector < abstractParameterSpec_t* > :: iterator it = ps.begin(); it != ps.end(); it++) {
+      params[(*it)->name] = (*it)->toParameter();
+    }
+    return false;
+  };
+
+  string _usage;
+  string usage() {
+    stringstream s; 
+    for ( pmap_t::iterator it = params.begin(); it != params.end(); it++ ) {
+      s << it->second->usage();
+      printf("%s\n", it->second->usage());
+    };
+    _usage = s.str();
+    return _usage;
+  };
+
+  void parse (int argc, const char **argv) {
     
-    p["myBool"] = new parameter_t < bool > ('b', (char*) "bool", false); 
-    p["myInt"] = new parameter_t < int > ('i', (char*) "int", 0); 
-    p["myFloat"] = new parameter_t < double > ('f', (char*) "float", 0.0); 
-    p["myString"] = new parameter_t < string > ('S', (char*) "string", ""); 
-    p["myChars"] = new parameter_t < char* > ('s', (char*) "chars", (char *) ""); 
+    params["myBool"] = new parameter_t < bool > ("myBool", 'b', (char*) "bool", false, "help bool"); 
+    params["myInt"] = new parameter_t < int > ("myInt", 'i', (char*) "int", 0, "help int"); 
+    params["myFloat"] = new parameter_t < double > ("myFloat", 'f', (char*) "float", 0.0, "help float"); 
+    params["myString"] = new parameter_t < string > ("myString", 'S', (char*) "string", "", "help for myString."); 
+    params["myChars"] = new parameter_t < char* > ("myChars", 's', (char*) "chars", (char *) "", "help for myChars"); 
 
     // p["myChars"] = &myChars;
     
@@ -234,14 +322,16 @@ class parameters_t {
     int oldi, oldj;
     do {
       oldi = i; oldj = j;
-      for ( pmap_t::iterator it = p.begin(); it != p.end(); it++) {
+      for ( pmap_t::iterator it = params.begin(); it != params.end(); it++) {
 	it->second->parse ( i, j, argc, argv );
       }
     } while ( oldi != i || oldj != j );
 
-    // check 
+    // check
+    
+    usage();
     printf ( "\nparameters are: \n" );
-    for ( pmap_t::iterator it = p.begin(); it != p.end(); it++) {
+    for ( pmap_t::iterator it = params.begin(); it != params.end(); it++) {
       printf( "%s=%s\n", it->first.c_str(), it->second->c_str());
     }
     printf ( "\n\n" );
