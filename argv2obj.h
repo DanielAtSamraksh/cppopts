@@ -134,12 +134,14 @@ struct parameter_t: public abstractParameter_t {
     return this->str().c_str();
   };
 
-  string _usage;
-  const char* usage() {
+  string _usageString;
+  // may be overwritten by subclass.
+  const char* usage() { return this->_usage(); }; 
+  const char* _usage() {
     stringstream s;
     s << "name: " << name << ", short: -" << this->s << ", long: --" << l << ", defaultValue: " << defaultValue << ", value: " << value << ", help: " << help << "\n";
-    _usage = s.str();
-    return _usage.c_str();
+    _usageString = s.str();
+    return _usageString.c_str();
   };
 
   void init ( T* ptr, string name, char _short, char* _long, T def, string help ) {
