@@ -1,4 +1,4 @@
-argv2obj
+cppopts
 ========
 
 C++ class that takes parameters passed through argv and stores them in an object.
