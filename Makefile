@@ -2,7 +2,7 @@
 
 all: clean test
 
-test: test.cpp argv2obj.h Makefile
+test: test.cpp cppopts.h Makefile
 	g++ test.cpp -o test
 
 	./test -b
