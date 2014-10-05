@@ -1,28 +1,8 @@
 #!/bin/bash
-set -x
+# set -x
 
 
-# ./test -b
-
-# ./test --bool=false
-# ./test --bool=true
-
-# ./test -s'Short String'
-# ./test --chars='Short String'
-
-# ./test -s 'Short String'
-# ./test --chars 'Short String'
-
-# ./test -bi2 -s string -f 3.4
-# ./test --string str --bool=false --chars=charstring --float=3.24 --int 5 -i6
-# ./test --string str --bool=false --chars=charstring --float=3.24 --int 5 
-# ./test --string=str --bool=false --chars=charstring -f3.24 
-# ./test --string=str --bool=false -- --chars=charstring -f3.24 
-# ./test --string str --bool=false --f --chars=charstring --float=3.24 --int=5
-# ./test --string str --bool=false --chars=charstring --float=3.24 --int=5
-
-
-./test -b | diff -Bbqy - <(cat - <<EOF
+./test -b | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 1
 myInt= (int) 0
 myFloat= (double) 0
@@ -35,9 +15,9 @@ myFloat = 0.000000
 myString = 
 myChars = 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --bool=false | diff -Bbqy - <(cat - <<EOF
+./test --bool=false | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 0
 myFloat= (double) 0
@@ -52,9 +32,9 @@ myChars =
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --bool=true | diff -Bbqy - <(cat - <<EOF
+./test --bool=true | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 1
 myInt= (int) 0
 myFloat= (double) 0
@@ -69,9 +49,26 @@ myChars =
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test '-sShort String' | diff -Bbqy - <(cat - <<EOF
+./test -b -s'Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
+myBool= (bool) 1
+myInt= (int) 0
+myFloat= (double) 0
+myString= (string) 
+myChars= (char*) Short String
+
+myBool = 1
+myInt = 0
+myFloat = 0.000000
+myString = 
+myChars = Short String
+
+
+EOF
+) && echo ok || echo fail
+
+./test '--chars=Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 0
 myFloat= (double) 0
@@ -86,9 +83,9 @@ myChars = Short String
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test '--chars=Short String' | diff -Bbqy - <(cat - <<EOF
+./test -s 'Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 0
 myFloat= (double) 0
@@ -103,9 +100,9 @@ myChars = Short String
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test -s 'Short String' | diff -Bbqy - <(cat - <<EOF
+./test --chars 'Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 0
 myFloat= (double) 0
@@ -120,26 +117,9 @@ myChars = Short String
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --chars 'Short String' | diff -Bbqy - <(cat - <<EOF
-myBool= (bool) 0
-myInt= (int) 0
-myFloat= (double) 0
-myString= (string) 
-myChars= (char*) Short String
-
-myBool = 0
-myInt = 0
-myFloat = 0.000000
-myString = 
-myChars = Short String
-
-
-EOF
-) && echo ok
-
-./test -bi2 -s string -f 3.4 | diff -Bbqy - <(cat - <<EOF
+./test -bi2 -s string -f 3.4 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 1
 myInt= (int) 2
 myFloat= (double) 3.4
@@ -154,9 +134,9 @@ myChars = string
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --string str --bool=false --chars=charstring --float=3.24 --int 5 -i6 | diff -Bbqy - <(cat - <<EOF
+./test --string str --bool=false --chars=charstring --float=3.24 --int 5 -i6 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 6
 myFloat= (double) 3.24
@@ -171,9 +151,9 @@ myChars = charstring
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --string str --bool=false --chars=charstring --float=3.24 --int 5 | diff -Bbqy - <(cat - <<EOF
+./test --string str --bool=false --chars=charstring --float=3.24 --int 5 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 5
 myFloat= (double) 3.24
@@ -188,9 +168,9 @@ myChars = charstring
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --string=str --bool=false --chars=charstring -f3.24 | diff -Bbqy - <(cat - <<EOF
+./test --string=str --bool=false --chars=charstring -f3.24 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 0
 myFloat= (double) 3.24
@@ -205,9 +185,9 @@ myChars = charstring
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --string=str --bool=false -- --chars=charstring -f3.24 | diff -Bbqy - <(cat - <<EOF
+./test --string=str --bool=false -- --chars=charstring -f3.24 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 0
 myFloat= (double) 0
@@ -224,9 +204,9 @@ myChars =
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --string str --bool=false --f --chars=charstring --float=3.24 --int=5 | diff -Bbqy - <(cat - <<EOF
+./test --string str --bool=false --f --chars=charstring --float=3.24 --int=5 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 5
 myFloat= (double) 3.24
@@ -242,9 +222,9 @@ myChars = charstring
 
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
-./test --string str --bool=false --chars=charstring --float=3.24 --int=5 | diff -Bbqy - <(cat - <<EOF
+./test --string str --bool=false --chars=charstring --float=3.24 --int=5 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
 myInt= (int) 5
 myFloat= (double) 3.24
@@ -258,5 +238,5 @@ myString = str
 myChars = charstring
 
 EOF
-) && echo ok
+) && echo ok || echo fail
 
