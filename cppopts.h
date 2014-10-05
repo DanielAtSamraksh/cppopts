@@ -314,67 +314,42 @@ class parameters_t {
       // we've reached a positional argument. Consume it and continue.
       positionals.push_back ( argv[i] ); i++; continue;
     } while (1); // 
-
-    // check
-    printf("\nAfter parsing\n");
-    if (unknowns.size()) {
-      printf ( "unknowns: ");
-      for (int i = 0; i < unknowns.size(); i++) {
-	printf("%s ", unknowns[i].c_str());
-      }
-      printf("\n\n");
-    }
-    if (positionals.size()) {
-      printf ( "positionals: ");
-      for (int i = 0; i < positionals.size(); i++) {
-	printf("%s ", positionals[i].c_str());
-      }
-      printf("\n\n");
-    }
-    usage();
-    printf ( "\noptions are: \n" );
-    for ( int i = 0; i < options.size(); i++ ) {
-      printf( "%s=%s\n", options[i]->name.c_str(), options[i]->c_str());
-    }
-    if (this->size()) {
-      printf ( "\nPositionals are:\n" );
-      for ( int i = 0; i < this->size(); i++) {
-	printf( " %s\n", (*this)[i].c_str() );
-      }
-      printf( "\n" );
-    }
-    if (this->unknowns.size()) {
-      printf ( "\nUnknowns are:\n" );
-      for ( int i = 0; i < this->unknowns.size(); i++) {
-	printf( " %s\n", this->unknowns[i].c_str() );
-      }
-      printf( "\n\n" );
-    }
-    // printf ( "\n\n" );
   };
-};
+  string _dumpString;
+  string dump() {
+    stringstream s;
+    for ( int i = 0; i < options.size(); i++ ) {
+      abstractParameter_t *o = options[i];      
 
-struct testParameters_t : parameters_t {
-  bool myBool;
-  int myInt;
-  double myFloat;
-  string myString;
-  char *myChars;
-  
-  testParameters_t() {
-    options.push_back ( new parameter_t < bool > ( &(this->myBool), "myBool", 'b', (char*) "bool", false, "help bool" ));
-    options.push_back ( new parameter_t < int > ( &(this->myInt), "myInt", 'i', (char*) "int", 0, "help int" ));
-    options.push_back ( new parameter_t < double > ( &(this->myFloat), "myFloat", 'f', (char*) "float", 0.0, "help float" ));
-    options.push_back ( new parameter_t < string > ( &(this->myString), "myString", 'S', (char*) "string", "", "help for myString." ));
-    options.push_back ( new parameter_t < char* > ( &(this->myChars), "myChars", 's', (char*) "chars", (char *) "", "help for myChars" ));
+      // The option pointer must be dynamically cast a particular type
+      // of parameter_t so we can get at it's value.
+      if ( parameter_t<int> *p = dynamic_cast < parameter_t<int> * > ( o ))
+	s << p->name << "= (int) " << p->value << "\n";
 
-    /* printf("After init\n"); this->usage(); */
-    /* printf("myBool = %d\n", myBool ); */
-    /* printf("myInt = %d\n", myInt ); */
-    /* printf("myFloat = %f\n", myFloat ); */
-    /* printf("myString = %s\n", myString.c_str() ); */
-    /* printf("myChars = %s\n", myChars ); */
+      else if ( parameter_t<double> *p = dynamic_cast <parameter_t <double>*> ( o ))
+	s << p->name << "= (double) " << p->value << "\n";
 
+      else if ( parameter_t<bool> *p = dynamic_cast<parameter_t <bool>*> ( o ))
+	s << p->name << "= (bool) " << p->value << "\n";
+
+      else if ( parameter_t<char*> *p = dynamic_cast<parameter_t <char*>*> ( o ))
+	s << p->name << "= (char*) " << p->value << "\n";
+
+      else if ( parameter_t<string> *p = dynamic_cast<parameter_t <string>*> ( o ))
+	s << p->name << "= (string) " << p->value << "\n";
+
+    }
+    for ( int i = 0; i < positionals.size(); i++ ) {
+      s << i << "=" << positionals[i] << "\n";
+    }
+
+    for ( int i = 0; i < unknowns.size(); i++ ) {
+      s << "unknown option " << i << "=" << unknowns[i] << "\n";
+    }
+
+
+    this->_dumpString = s.str();
+    return this->_dumpString;
   };
 };
 
