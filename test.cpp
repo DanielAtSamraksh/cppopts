@@ -9,6 +9,7 @@ struct testParameters_t : parameters_t {
   double myFloat;
   string myString;
   char *myChars;
+  string myNum;
 
   /// Create a constuctor which declares the options we're interested in.
   testParameters_t() {
@@ -27,12 +28,20 @@ struct testParameters_t : parameters_t {
     options.push_back (
       new parameter_t < char* > (
 	&(this->myChars), "myChars", 's', (char*) "chars", (char *) "", "help for myChars" ));
+    vector <string> stringv;
+    stringv.push_back("zero");
+    stringv.push_back("one");
+    stringv.push_back("two");
+    options.push_back (
+      new parameter_t < string > (
+	&(this->myNum), "myNum", 'n', (char*) "num",
+	"zero", "one of zero, one, or two", stringv ));
   };
 };
 
 int main ( int argc, const char** argv ) {
   testParameters_t args;
-  args.parse( argc, argv );
+  if (! args.parse( argc, argv )) { return 0; }
   printf("%s\n", args.dump().c_str());
 
   // access the parameters directly.
@@ -41,6 +50,7 @@ int main ( int argc, const char** argv ) {
   printf("myFloat = %f\n", args.myFloat );
   printf("myString = %s\n", args.myString.c_str() );
   printf("myChars = %s\n", args.myChars );
+  printf("myNum = %s\n", args.myNum.c_str() );
 
   // parameters can also be accessed like this:
   //     dynamic_cast(parameter_t<bool>*)args["myBool"]

@@ -43,6 +43,12 @@ bool eq ( const char* s1, const char* s2 ) {
   return strcmp ( s1, s2 ) == 0; 
 };
 
+/// boolean vectors are optimized so the template definition doesn't work.
+bool eq ( const bool x, const bool y ) { return x == y; };
+
+template < class T >
+bool eq ( T x, T y ) { return x == y; }
+
 bool atoval ( const char *s, int &i ) {
   // printf("converting %s to int %d\n", s, atoi(s));
   i = atoi ( s );
@@ -111,16 +117,23 @@ template < class T >
 struct parameter_t: public abstractParameter_t {
  public:
 
-  parameter_t ( T * ptr, string name, char _short, char* _long, T def, string help ) {
+  parameter_t ( T * ptr, string name, char _short, char* _long,
+		T def, string help ) {
     init ( ptr, name, _short, _long, def, help );
   };
-  
+
+  parameter_t ( T * ptr, string name, char _short, char* _long,
+		T def, string help, vector<T> choices ) {
+    init ( ptr, name, _short, _long, def, help, choices );
+  };
+
   // virtual ~parameter_t(){};
   ~parameter_t(){};
 
   T defaultValue; 
   T value;
   T *valuePtr;
+  vector < T > choices;
 
   string _str;
 
@@ -139,12 +152,29 @@ struct parameter_t: public abstractParameter_t {
   const char* usage() { return this->_usage(); }; 
   const char* _usage() {
     stringstream s;
-    s << "name: " << name << ", short: -" << this->s << ", long: --" << l << ", defaultValue: " << defaultValue << ", value: " << value << ", help: " << help << "\n";
+    s << "name: " << name << ", short: -" << this->s << ", long: --" << l
+      << ", defaultValue: " << defaultValue << ", value: " << value;
+    if (choices.size()) {
+      s << ", choices = [";
+      for (int i=0; i<choices.size(); i++) {
+	if (i) s << ", "; // comma separator
+	s << choices[i];
+      }
+      s << "]";
+    }
+    s  << ", help: " << help << "\n";
     _usageString = s.str();
     return _usageString.c_str();
   };
 
-  void init ( T* ptr, string name, char _short, char* _long, T def, string help ) {
+  void init ( T* ptr, string name, char _short, char* _long,
+	      T def, string help, vector<T> choices ) {
+    this->choices = choices;
+    this->init ( ptr, name, _short, _long, def, help );
+  };
+    
+  void init ( T* ptr, string name, char _short, char* _long,
+	      T def, string help ) {
     this->valuePtr = ptr;
     this->s = _short;
     this->l = _long;
@@ -154,20 +184,42 @@ struct parameter_t: public abstractParameter_t {
     this->help = help;
     this->name = name;
   };
+
+  bool set ( const char* s ) {
+    if (! atoval(s, this->value) ) return false;
+    *(this->valuePtr) = this->value;
+    if ( this->choices.size() ) {
+      for ( int i = 0; i < this->choices.size(); i++ )
+	if ( eq ( this->choices[i], this->value )) return true;
+      stringstream strm;
+      strm << "Value for option " << this->name <<
+	" is not one of the valid choices (";
+      for ( int i = 0; i < this->choices.size(); i++ ) {
+	if ( i ) strm << ", ";
+	strm << this->choices[i];
+      }
+      strm << ").";
+      printf( "%s\n", strm.str().c_str() );
+      return false;
+    }
+    return true;
+  };
   
-  /// Parse argv starting at argv[i][j]. Return true on error. Update
+  bool set ( const string s ) { return this->set ( s.c_str() ); };
+  
+  /// Parse argv starting at argv[i][j]. Return false on error. Update
   /// i and j as needed.
   bool parse ( int &i, int &j, const int argc, const char **argv ) {
     // i = index into argv, j = index into argv[i]
-    if ( i >= argc) return false; // no more arguments
+    if ( i >= argc) return true; // no more arguments
     if ( j > 0 && j >= strlen ( argv[i] )) { 
       i++; j = 0; // move to next argument if at the end argv[i]
-      if ( i >= argc) return false; // return if no more arguments
+      if ( i >= argc) return true; // return if no more arguments
     }
     if ( '-' == argv[i][0] ) {
       if ('-' == argv[i][1]) {
 	// -- means stop processing
-	if ('\0' == argv[i][2]) return false;
+	if ('\0' == argv[i][2]) return true;
 	j=2;
 	return this->parselong ( i, j, argc, argv );
       }
@@ -175,9 +227,10 @@ struct parameter_t: public abstractParameter_t {
       // printf("parsing short i=%d j=%d %c\n", i, j, argv[i][j]);
       return parseshort ( i, j, argc, argv );
     }
-    return false; // not long or short option, just return
+    return true; // not long or short option, just return
   };
 
+  /// returns false on error
   bool parselong ( int &i, int &j, const int argc, const char **argv ) {
     // we start pointing at the long
     // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
@@ -189,60 +242,56 @@ struct parameter_t: public abstractParameter_t {
       case '\0': // value in next argument
 	// printf("type = %s\n", typeid(T).name());
 	if (! strncmp(typeid(T).name(), "bool", 1)) {
-	  atoval("true", this->value);
-	  *(this->valuePtr) = this->value;
+	  if (! this->set("true") ) return false;
 	  i++; j = 0;
 	}
 	else if ( i+1 >= argc ) {
 	  printf("Missing argument for option %s\n", argv[i]);
 	  i++; j=0;// avoid infinite loop
-	  return true;
+	  return false;
 	}
 	else {
-	  atoval (argv[i+1], this->value);
-	  *(this->valuePtr) = this->value;
+	  if ( ! this->set( argv[i+1] )) return false;
 	  i += 2; j = 0;
 	}
-	return false;
+	return true; 
       case '=': // value in this argument
-	atoval ( argv[i]+2+strlen(l)+1, this->value );
-	*(this->valuePtr) = this->value;
+	if (! this->set( argv[i]+2+strlen(l)+1 )) return false;
 	i += 1; j = 0;
-	return false;
+	return true;
       default: ; // is longer than what we're looking for
       }
     }
-    return false;
+    return true;
   };
-  
+
+  /// returns false on error
   bool parseshort ( int &i, int &j, const int argc, const char **argv ) {
     // check shorts
     if (j < 1) { printf("parse error, j <= 0\n"); exit(1); }
     // printf("type = %s\n", typeid(T).name());
     if ( this->s == argv[i][j] ) {
       if (! strncmp(typeid(T).name(), "bool", 1)) {
-	atoval("true", this->value);
-	*(this->valuePtr) = this->value;
+	if (! this->set("true")) return false;
 	j++;
       }
       else if (j+1 < strlen(argv[i])) {
-	atoval ( argv[i]+j+1, this->value );
-	*(this->valuePtr) = this->value;
+	if (! this->set ( argv[i]+j+1 )) return false;
 	i++; j = 0;
       }
       else if ( i + 1 < argc ) {
-	atoval ( argv[i+1], this->value );
+	if (! this->set ( argv[i+1] )) return false;
 	*(this->valuePtr) = this->value;
 	i += 2; j=0;
       }
       else {
 	printf ("missing value for short option %c in %s\n", this->s, argv[i]);
 	i++; j=0; // avoid infinite loop if return value is not checked.
-	return true;
+	return false;
       }
-      return false;
+      return true;
     }
-    return false;
+    return true;
   };
 
 };
@@ -281,15 +330,18 @@ class parameters_t {
     return _usage;
   };
 
-  
-  void parse (int argc, const char **argv) {
+  // return false on failure.
+  bool parse (int argc, const char **argv) {
     int i=1, j=0;
     int oldi, oldj;
     do { do {
       oldi = i; oldj = j;
       for ( int k = 0; k < options.size(); k++ ) {
 	// printf( "  at %s looking for %s\n", argv[i], options[k]->name.c_str() );
-	options[k]->parse ( i, j, argc, argv );
+	if (! options[k]->parse ( i, j, argc, argv )) { // error
+	  printf("Parse error.\n");
+	  return false;
+	}
       }} while ( oldi != i || oldj != j );
       // we're stuck, find out why
       if ( i >= argc ) break; // done with args
@@ -309,11 +361,12 @@ class parameters_t {
       }
       if ( j != 0 ) { // sanity check
 	printf("error parsing at %s (argument %d), expected the beginning of a positional\n", argv[i], i);
-	exit(1);
+	return false;
       }
       // we've reached a positional argument. Consume it and continue.
       positionals.push_back ( argv[i] ); i++; continue;
-    } while (1); // 
+    } while (1); //
+    return true;
   };
   string _dumpString;
   string dump() {
