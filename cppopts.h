@@ -104,6 +104,7 @@ struct abstractParameter_t {
   string name;
   char s;   // short argument
   char *l;   // long argument
+  bool nolong, noshort; // true if there is no long or short defined
   string help;     // help text
 
   //  virtual ~abstractParameter_t() = 0;
@@ -125,6 +126,28 @@ struct parameter_t: public abstractParameter_t {
   parameter_t ( T * ptr, string name, char _short, char* _long,
 		T def, string help, vector<T> choices ) {
     init ( ptr, name, _short, _long, def, help, choices );
+  };
+
+  // no short
+  parameter_t ( T * ptr, string name, char* _long,
+		T def, string help ) {
+    init ( ptr, name, _long, def, help );
+  };
+
+  parameter_t ( T * ptr, string name, char* _long,
+		T def, string help, vector<T> choices ) {
+    init ( ptr, name, _long, def, help, choices );
+  };
+
+  // no long
+  parameter_t ( T * ptr, string name, char _short,
+		T def, string help ) {
+    init ( ptr, name, _short, def, help );
+  };
+
+  parameter_t ( T * ptr, string name, char _short,
+		T def, string help, vector<T> choices ) {
+    init ( ptr, name, _short, def, help, choices );
   };
 
   // virtual ~parameter_t(){};
@@ -167,17 +190,65 @@ struct parameter_t: public abstractParameter_t {
     return _usageString.c_str();
   };
 
+  // all options
   void init ( T* ptr, string name, char _short, char* _long,
 	      T def, string help, vector<T> choices ) {
-    this->choices = choices;
-    this->init ( ptr, name, _short, _long, def, help );
-  };
-    
-  void init ( T* ptr, string name, char _short, char* _long,
-	      T def, string help ) {
-    this->valuePtr = ptr;
     this->s = _short;
     this->l = _long;
+    this->nolong = this->noshort = false;
+    this->choices = choices;
+    this->init ( ptr, name, def, help );
+  };
+  // no short
+  void init ( T* ptr, string name, char* _long,
+	      T def, string help, vector<T> choices ) {
+    this->l = _long;
+    this->noshort = true;
+    this->nolong = false;
+    this->choices = choices;
+    this->init ( ptr, name, def, help );
+
+    this->choices = choices;
+    this->init ( ptr, name, def, help );
+  };
+  // no long
+  void init ( T* ptr, string name, char _short,
+	      T def, string help, vector<T> choices ) {
+    this->s = _short;
+    this->noshort = false;
+    this->nolong = true;
+    this->choices = choices;
+    this->init ( ptr, name, def, help );
+  };
+  // no choices
+  void init ( T* ptr, string name, char _short, char* _long,
+	      T def, string help ) {
+    this->s = _short;
+    this->l = _long;
+    this->noshort = false;
+    this->nolong = false;
+    this->init ( ptr, name, def, help );
+  };
+  // no choices, no short
+  void init ( T* ptr, string name, char* _long,
+	      T def, string help ) {
+    this->l = _long;
+    this->noshort = true;
+    this->nolong = false;
+    this->init ( ptr, name, def, help );
+  };
+  // no choices, no long
+  void init ( T* ptr, string name, char _short,
+	      T def, string help ) {
+    this->s = _short;
+    this->noshort = false;
+    this->nolong = true;
+    this->init ( ptr, name, def, help );
+  };
+  // common case
+  void init ( T* ptr, string name, T def, string help ) {
+    if (ptr) this->valuePtr = ptr;
+    else this->valuePtr = 0;
     this->value = def;
     if (this->valuePtr) *(this->valuePtr) = def;
     this->defaultValue = def;
@@ -187,7 +258,7 @@ struct parameter_t: public abstractParameter_t {
 
   bool set ( const char* s ) {
     if (! atoval(s, this->value) ) return false;
-    *(this->valuePtr) = this->value;
+    if (this->valuePtr) *(this->valuePtr) = this->value;
     if ( this->choices.size() ) {
       for ( int i = 0; i < this->choices.size(); i++ )
 	if ( eq ( this->choices[i], this->value )) return true;
@@ -235,7 +306,7 @@ struct parameter_t: public abstractParameter_t {
     // we start pointing at the long
     // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
     // printf("i = %d, j = %d\n", i, j);
-    
+    if ( this->nolong ) return true;
     if ( startswith ( this->l, argv[i]+2 ) ) {
       char char_after = argv[i][ 2 + strlen(l) ];
       switch ( char_after ) {
@@ -267,6 +338,7 @@ struct parameter_t: public abstractParameter_t {
 
   /// returns false on error
   bool parseshort ( int &i, int &j, const int argc, const char **argv ) {
+    if ( this->noshort ) return true;
     // check shorts
     if (j < 1) { printf("parse error, j <= 0\n"); exit(1); }
     // printf("type = %s\n", typeid(T).name());
