@@ -109,6 +109,7 @@ struct abstractParameter_t {
 
   //  virtual ~abstractParameter_t() = 0;
   virtual bool parse ( int &i, int &j, const int argc, const char **argv ) = 0;
+  virtual const string str() = 0;
   virtual const char* c_str() = 0;
   virtual const char* usage() = 0;
   ~abstractParameter_t(){};
@@ -160,7 +161,7 @@ struct parameter_t: public abstractParameter_t {
 
   string _str;
 
-  string str() { 
+  const string str() { 
     stringstream s; s << value; 
     this->_str = s.str(); // save the returned string 
     return this->_str; // return the saved copy
