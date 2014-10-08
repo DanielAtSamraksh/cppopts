@@ -31,7 +31,7 @@ bool startswith ( const string s1, const char* s2) {
 
 /* The second argument starts with the first argument. */
 bool startswith ( const char* s1, const char* s2 ) {
-  int n = strlen( s1 ); 
+  unsigned n = strlen( s1 ); 
   return n <= strlen( s2 ) && 0 == strncmp ( s1, s2, n );
 };
 
@@ -52,6 +52,12 @@ bool eq ( T x, T y ) { return x == y; }
 bool atoval ( const char *s, int &i ) {
   // printf("converting %s to int %d\n", s, atoi(s));
   i = atoi ( s );
+  return true;
+};
+
+bool atoval ( const char *s, unsigned &i ) {
+  // printf("converting %s to int %d\n", s, atoi(s));
+  i = (unsigned) atoi ( s );
   return true;
 };
 
@@ -108,7 +114,7 @@ struct abstractParameter_t {
   string help;     // help text
 
   //  virtual ~abstractParameter_t() = 0;
-  virtual bool parse ( int &i, int &j, const int argc, const char **argv ) = 0;
+  virtual bool parse ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) = 0;
   virtual const string str() = 0;
   virtual const char* c_str() = 0;
   virtual const char* usage() = 0;
@@ -180,7 +186,7 @@ struct parameter_t: public abstractParameter_t {
       << ", defaultValue: " << defaultValue << ", value: " << value;
     if (choices.size()) {
       s << ", choices = [";
-      for (int i=0; i<choices.size(); i++) {
+      for (unsigned i=0; i<choices.size(); i++) {
 	if (i) s << ", "; // comma separator
 	s << choices[i];
       }
@@ -261,12 +267,12 @@ struct parameter_t: public abstractParameter_t {
     if (! atoval(s, this->value) ) return false;
     if (this->valuePtr) *(this->valuePtr) = this->value;
     if ( this->choices.size() ) {
-      for ( int i = 0; i < this->choices.size(); i++ )
+      for ( unsigned i = 0; i < this->choices.size(); i++ )
 	if ( eq ( this->choices[i], this->value )) return true;
       stringstream strm;
       strm << "Value for option " << this->name <<
 	" is not one of the valid choices (";
-      for ( int i = 0; i < this->choices.size(); i++ ) {
+      for ( unsigned i = 0; i < this->choices.size(); i++ ) {
 	if ( i ) strm << ", ";
 	strm << this->choices[i];
       }
@@ -281,7 +287,7 @@ struct parameter_t: public abstractParameter_t {
   
   /// Parse argv starting at argv[i][j]. Return false on error. Update
   /// i and j as needed.
-  bool parse ( int &i, int &j, const int argc, const char **argv ) {
+  bool parse ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
     // i = index into argv, j = index into argv[i]
     if ( i >= argc) return true; // no more arguments
     if ( j > 0 && j >= strlen ( argv[i] )) { 
@@ -303,7 +309,7 @@ struct parameter_t: public abstractParameter_t {
   };
 
   /// returns false on error
-  bool parselong ( int &i, int &j, const int argc, const char **argv ) {
+  bool parselong ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
     // we start pointing at the long
     // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
     // printf("i = %d, j = %d\n", i, j);
@@ -338,7 +344,7 @@ struct parameter_t: public abstractParameter_t {
   };
 
   /// returns false on error
-  bool parseshort ( int &i, int &j, const int argc, const char **argv ) {
+  bool parseshort ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
     if ( this->noshort ) return true;
     // check shorts
     if (j < 1) { printf("parse error, j <= 0\n"); exit(1); }
@@ -380,12 +386,12 @@ class parameters_t {
   vector < abstractParameter_t* > options;
   vector < string > positionals, unknowns; // the part of the argvs not parsed as options
 
-  int size() { return positionals.size(); };
+  unsigned size() { return positionals.size(); };
 
-  string operator[] ( int i ) { return positionals[i]; };
+  string operator[] ( unsigned i ) { return positionals[i]; };
 
   abstractParameter_t* operator[] ( string n ) {
-    for ( int i = 0; i < options.size(); i++) {
+    for ( unsigned i = 0; i < options.size(); i++) {
       if ( n == options[i]->name ) return options[i];
     }
       printf( "Lookup error: Parameter %s not found.\n", n.c_str() );
@@ -395,7 +401,7 @@ class parameters_t {
   string _usage;
   string usage() {
     stringstream s; 
-    for ( int i = 0; i < options.size(); i++ ) {
+    for ( unsigned i = 0; i < options.size(); i++ ) {
       s << options[i]->usage();
       printf("%s", options[i]->usage());
     };
@@ -404,12 +410,12 @@ class parameters_t {
   };
 
   // return false on failure.
-  bool parse (int argc, const char **argv) {
-    int i=1, j=0;
-    int oldi, oldj;
+  bool parse (unsigned argc, const char **argv) {
+    unsigned i=1, j=0;
+    unsigned oldi, oldj;
     do { do {
       oldi = i; oldj = j;
-      for ( int k = 0; k < options.size(); k++ ) {
+      for ( unsigned k = 0; k < options.size(); k++ ) {
 	// printf( "  at %s looking for %s\n", argv[i], options[k]->name.c_str() );
 	if (! options[k]->parse ( i, j, argc, argv )) { // error
 	  printf("Parse error.\n");
@@ -444,7 +450,7 @@ class parameters_t {
   string _dumpString;
   string dump() {
     stringstream s;
-    for ( int i = 0; i < options.size(); i++ ) {
+    for ( unsigned i = 0; i < options.size(); i++ ) {
       abstractParameter_t *o = options[i];      
 
       // The option pointer must be dynamically cast a particular type
@@ -465,11 +471,11 @@ class parameters_t {
 	s << p->name << "= (string) " << p->value << "\n";
 
     }
-    for ( int i = 0; i < positionals.size(); i++ ) {
+    for ( unsigned i = 0; i < positionals.size(); i++ ) {
       s << i << "=" << positionals[i] << "\n";
     }
 
-    for ( int i = 0; i < unknowns.size(); i++ ) {
+    for ( unsigned i = 0; i < unknowns.size(); i++ ) {
       s << "unknown option " << i << "=" << unknowns[i] << "\n";
     }
 

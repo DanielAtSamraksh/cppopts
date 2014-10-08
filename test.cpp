@@ -41,7 +41,7 @@ struct testParameters_t : parameters_t {
 
 int main ( int argc, const char** argv ) {
   testParameters_t args;
-  if (! args.parse( argc, argv )) { return 0; }
+  if (! args.parse( (unsigned) argc, argv )) { return 0; }
   printf("%s\n", args.dump().c_str());
 
   // access the parameters directly.
