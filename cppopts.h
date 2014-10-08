@@ -112,7 +112,9 @@ struct abstractParameter_t {
   char *l;   // long argument
   bool nolong, noshort; // true if there is no long or short defined
   string help;     // help text
-
+  bool required; // true if this is required, not used in this class, but in parameters_t.
+  bool is_set; // true if this value has been set.
+  
   //  virtual ~abstractParameter_t() = 0;
   virtual bool parse ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) = 0;
   virtual const string str() = 0;
@@ -261,26 +263,33 @@ struct parameter_t: public abstractParameter_t {
     this->defaultValue = def;
     this->help = help;
     this->name = name;
+    this->is_set = false;
   };
 
+  /// Use a char* to set the value.
   bool set ( const char* s ) {
     if (! atoval(s, this->value) ) return false;
     if (this->valuePtr) *(this->valuePtr) = this->value;
+    this->is_set = true;
     if ( this->choices.size() ) {
+      this->is_set = false;
       for ( unsigned i = 0; i < this->choices.size(); i++ )
-	if ( eq ( this->choices[i], this->value )) return true;
-      stringstream strm;
-      strm << "Value for option " << this->name <<
-	" is not one of the valid choices (";
-      for ( unsigned i = 0; i < this->choices.size(); i++ ) {
-	if ( i ) strm << ", ";
-	strm << this->choices[i];
+	if ( eq ( this->choices[i], this->value )) {
+	  this->is_set = true;
+	}
+      if ( false == this->is_set ) {
+	stringstream strm;
+	strm << "Value for option " << this->name <<
+	  " is not one of the valid choices (";
+	for ( unsigned i = 0; i < this->choices.size(); i++ ) {
+	  if ( i ) strm << ", ";
+	  strm << this->choices[i];
+	}
+	strm << ").";
+	printf( "%s\n", strm.str().c_str() );
       }
-      strm << ").";
-      printf( "%s\n", strm.str().c_str() );
-      return false;
     }
-    return true;
+    return this->is_set;
   };
   
   bool set ( const string s ) { return this->set ( s.c_str() ); };
@@ -347,7 +356,7 @@ struct parameter_t: public abstractParameter_t {
   bool parseshort ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
     if ( this->noshort ) return true;
     // check shorts
-    if (j < 1) { printf("parse error, j <= 0\n"); exit(1); }
+    if (j < 1) { printf("Parse error, j <= 0\n"); exit(1); }
     // printf("type = %s\n", typeid(T).name());
     if ( this->s == argv[i][j] ) {
       if (! strncmp(typeid(T).name(), "bool", 1)) {
@@ -364,7 +373,7 @@ struct parameter_t: public abstractParameter_t {
 	i += 2; j=0;
       }
       else {
-	printf ("missing value for short option %c in %s\n", this->s, argv[i]);
+	printf ("Parse error: missing value for short option %c in %s\n", this->s, argv[i]);
 	i++; j=0; // avoid infinite loop if return value is not checked.
 	return false;
       }
@@ -418,7 +427,12 @@ class parameters_t {
       for ( unsigned k = 0; k < options.size(); k++ ) {
 	// printf( "  at %s looking for %s\n", argv[i], options[k]->name.c_str() );
 	if (! options[k]->parse ( i, j, argc, argv )) { // error
-	  printf("Parse error.\n");
+	  printf("Parse error on %s.\n  Argv = ", argv[i]);
+	  for ( unsigned k = 0; k < argc; k++ ) {
+	    if (k) printf(" ");
+	    printf ( "%s", argv[k] );
+	  }
+	  printf("\n\n");
 	  return false;
 	}
       }} while ( oldi != i || oldj != j );
@@ -445,6 +459,15 @@ class parameters_t {
       // we've reached a positional argument. Consume it and continue.
       positionals.push_back ( argv[i] ); i++; continue;
     } while (1); //
+    // check if all the required parameters were set.
+    for ( unsigned k = 0; k < this->options.size(); k++ ) {
+      abstractParameter_t *o = options[k];
+      if ( o->required && ! o->is_set ) {
+	printf( "Parse error. Required parameter %s has not been set.\n",
+		o->name.c_str() );
+	return false;
+      }
+    }
     return true;
   };
   string _dumpString;

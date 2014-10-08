@@ -284,11 +284,12 @@ myChars =
 myNum = two
 
 EOF
-) && echo ok || echo fail
+) && echo OK choices success || echo Fail choices success
 
 ./test --num four | diff -Bby --suppress-common-lines - <(cat - <<EOF
 Value for option myNum is not one of the valid choices (zero, one, two).
-Parse error.
+Parse error on --num.
+  Argv = ./test --num four
 EOF
-) && echo ok || echo fail
+) && echo OK choices failure || echo Fail choices failure
 
