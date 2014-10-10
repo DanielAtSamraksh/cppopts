@@ -45,15 +45,18 @@ struct testParameters_t : parameters_t {
     // myNum - user must select between options stored in vector
     // stringv note the "new". Without the new, stringv goes out of
     // scope when the constructor finishes. We want it to persist.
-    vector <string> *stringv = new vector<string>; 
-    stringv->push_back("zero");
-    stringv->push_back("one");
-    stringv->push_back("two");
     parameter_t < string > *stringp = new parameter_t < string > (
       &(this->myNum), "myNum", 'n', (char*) "num",
       "zero", "one of zero, one, or two");
     options.push_back ( stringp );
-    stringp->choices = stringv; // set the choices member to the choices.
+    stringp->setChoices("zero")("one")("two");
+    
+    
+    // vector <string> *stringv = new vector<string>; 
+    // stringv->push_back("zero");
+    // stringv->push_back("one");
+    // stringv->push_back("two");
+    // stringp->choices = stringv; // set the choices member to the choices.
 
 
     // Dynamic choice, pass in the choices in one option (myChoices)
@@ -70,7 +73,7 @@ struct testParameters_t : parameters_t {
     parameter_t < string > *choicep = new parameter_t < string > (
       &(this->myChoice), "myChoice", (char*) "choice", "", "My choice.");
     options.push_back ( choicep );
-    choicep->choices = &(choicesp->value);
+    choicep->choices = &choicesp->value;
 
   };
 };

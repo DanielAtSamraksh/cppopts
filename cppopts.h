@@ -181,10 +181,38 @@ struct abstractParameter_t {
   ~abstractParameter_t(){};
 };
 
+
+/// Class to make populating the choice vector very easy.
+template < class T >
+struct choices_t {
+  vector < T > *v;
+  choices_t () {};
+  choices_t ( vector <T> * _v ) {
+    this->v = _v;
+  };
+  choices_t &operator() ( T x ) {
+    if ( ! v ) {
+      printf("choices_t error: v not initialized\n");
+      exit (1);
+    }
+    //    printf("pushing %s on %s \n", str(x).c_str(), str(v).c_str() );
+    v->push_back( x );
+    //    printf("pushed %s on %s \n\n", str(x).c_str(), str(v).c_str() );
+    return *this;
+  };
+};
+    
 template < class T >
 struct parameter_t: public abstractParameter_t {
  public:
 
+  T defaultValue; 
+  T value;
+  T *valuePtr;
+  vector < T > *choices;
+  bool choices_should_be_freed;
+  choices_t<T> choicesHelper;
+  
   parameter_t ( T * ptr, string name, char _short, char* _long,
 		T def, string help ) {
     init ( ptr, name, _short, _long, def, help );
@@ -203,13 +231,25 @@ struct parameter_t: public abstractParameter_t {
   };
 
   // virtual ~parameter_t(){};
-  ~parameter_t(){};
+  ~parameter_t(){
+    if ( this->choices_should_be_freed )
+      delete choices;
+  };
 
-  T defaultValue; 
-  T value;
-  T *valuePtr;
-  vector < T > *choices;
-
+  choices_t<T> & setChoices() {
+    if ( ! this->choices ) {
+      this->choices = new vector <T>;
+      this->choices_should_be_freed = true;
+    }
+    this->choicesHelper.v = this->choices;
+    
+    return this->choicesHelper;
+  };
+  choices_t<T> & setChoices(T x) {
+    return this->setChoices()(x);
+  };
+  
+  
   string _str;
 
   const string str() { 
@@ -248,7 +288,7 @@ struct parameter_t: public abstractParameter_t {
     if ( this->choices && this->choices->size() > 0 ) {
       s << " Choices = " << ::str ( this->choices->at(0) );
       for (unsigned i=1; i < this->choices->size(); i++) {
-	s << ", " << ::str ( this->choices->at(i) );
+    	s << ", " << ::str ( this->choices->at(i) );
       }
       s << ".";
     }
@@ -264,7 +304,6 @@ struct parameter_t: public abstractParameter_t {
     this->l = _long;
     this->noshort = true;
     this->nolong = false;
-    this->choices = choices;
     this->init ( ptr, name, def, help );
   };
   // no long
