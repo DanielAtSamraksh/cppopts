@@ -18,9 +18,52 @@ using std::vector;
 using std::map;
 using std::stringstream;
 
-template < class T >
-string toString( T x ) {
-  stringstream s; s << x; return s.str();
+
+template< class T >
+const string str ( T x ) {
+  stringstream s;
+  s << x;
+  return s.str();
+};
+		   
+template< class T >
+const string str ( vector < T > v ) {
+  stringstream s;
+  if ( v.size() == 0 ) s << "[]";
+  else {
+    s << "[" << str ( v[0] );
+    for ( unsigned i = 1; i < v.size(); i++)
+      s << ", " << str ( v[i] );
+    s << "]";
+  }
+  return s.str();
+};
+
+
+/// print out the type of a variable
+const string typestr ( const bool x)    { return "bool"; };
+const string typestr ( const int x)     { return "int"; };
+const string typestr ( const double x)  { return "double"; };
+const string typestr ( const string x)  { return "string"; };
+const string typestr ( const char x)   { return "char"; };
+const string typestr ( const char* x)   { return "char*"; };
+const string typestr ( const vector< bool > v ) {
+  return "vector<bool>";
+};
+const string typestr ( const vector< int > v ) {
+  return "vector<int>";
+};
+const string typestr ( const vector< double > v ) {
+  return "vector<double>";
+};
+const string typestr ( const vector< unsigned > v ) {
+  return "vector<unsigned>";
+};
+const string typestr ( const vector< char* > v ) {
+  return "vector<char*>";
+};
+const string typestr ( const vector< string > v ) {
+  return "vector<string>";
 };
 
 int min (int i, int j) { return i < j? i: j; };
@@ -47,7 +90,7 @@ bool eq ( const char* s1, const char* s2 ) {
 bool eq ( const bool x, const bool y ) { return x == y; };
 
 template < class T >
-bool eq ( T x, T y ) { return x == y; }
+bool eq ( T x, T y ) { return x == y; };
 
 bool atoval ( const char *s, int &i ) {
   // printf("converting %s to int %d\n", s, atoi(s));
@@ -93,6 +136,20 @@ bool atoval ( const char *s, double &f ) {
   return true;
 }
 
+bool atoval ( const char *s, vector <string> &v ) {
+  unsigned len = strlen ( s );
+  const char *start = s;
+  unsigned i;
+  for ( i = 0; i < len; i++ ) {
+    if ( ' ' == s[i] ) {
+      v.push_back ( string ( start, s+i ));
+      start = s+i;
+    }
+  }
+  v.push_back ( string ( start, s+i ));
+  return true;
+}
+
 char* tolower(char* s) {
   // from http://stackoverflow.com/a/2661788/268040
   printf("lowering %s\n", s);
@@ -116,8 +173,9 @@ struct abstractParameter_t {
   bool is_set; // true if this value has been set.
   
   //  virtual ~abstractParameter_t() = 0;
-  virtual bool parse ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) = 0;
+  virtual bool parse ( unsigned &i, unsigned &j, unsigned argc, const char **argv ) = 0;
   virtual const string str() = 0;
+  virtual const string typestr() = 0;
   virtual const char* c_str() = 0;
   virtual const char* usage() = 0;
   ~abstractParameter_t(){};
@@ -132,20 +190,10 @@ struct parameter_t: public abstractParameter_t {
     init ( ptr, name, _short, _long, def, help );
   };
 
-  parameter_t ( T * ptr, string name, char _short, char* _long,
-		T def, string help, vector<T> choices ) {
-    init ( ptr, name, _short, _long, def, help, choices );
-  };
-
   // no short
   parameter_t ( T * ptr, string name, char* _long,
 		T def, string help ) {
     init ( ptr, name, _long, def, help );
-  };
-
-  parameter_t ( T * ptr, string name, char* _long,
-		T def, string help, vector<T> choices ) {
-    init ( ptr, name, _long, def, help, choices );
   };
 
   // no long
@@ -154,27 +202,24 @@ struct parameter_t: public abstractParameter_t {
     init ( ptr, name, _short, def, help );
   };
 
-  parameter_t ( T * ptr, string name, char _short,
-		T def, string help, vector<T> choices ) {
-    init ( ptr, name, _short, def, help, choices );
-  };
-
   // virtual ~parameter_t(){};
   ~parameter_t(){};
 
   T defaultValue; 
   T value;
   T *valuePtr;
-  vector < T > choices;
+  vector < T > *choices;
 
   string _str;
 
   const string str() { 
-    stringstream s; s << value; 
+    stringstream s; s << ::str ( value ); 
     this->_str = s.str(); // save the returned string 
     return this->_str; // return the saved copy
   };
 
+  const string typestr (){ return ::typestr ( this->value );};
+  
   const char *c_str() {
     return this->str().c_str();
   };
@@ -184,74 +229,59 @@ struct parameter_t: public abstractParameter_t {
   const char* usage() { return this->_usage(); }; 
   const char* _usage() {
     stringstream s;
-    s << "name: " << name << ", short: -" << this->s << ", long: --" << l
-      << ", defaultValue: " << defaultValue << ", value: " << value;
-    if (choices.size()) {
-      s << ", choices = [";
-      for (unsigned i=0; i<choices.size(); i++) {
-	if (i) s << ", "; // comma separator
-	s << choices[i];
+
+    // name
+    s << this->name << "\t";
+
+    // options
+    if ( this->s && this->l ) s << "-" << this->s << "/--" << this->l;
+    else if ( this->s ) s << "-" << this->s;
+    else s << "--" << this->l;
+
+    // help
+    s << "\t" << this->help;
+
+    // default value
+    s << " Default value = " << ::str ( this->defaultValue ) << ".";
+
+    // choices
+    if ( this->choices && this->choices->size() > 0 ) {
+      s << " Choices = " << ::str ( this->choices->at(0) );
+      for (unsigned i=1; i < this->choices->size(); i++) {
+	s << ", " << ::str ( this->choices->at(i) );
       }
-      s << "]";
+      s << ".";
     }
-    s  << ", help: " << help << "\n";
+
+    // save in class member so that string won't go out of scope.
     _usageString = s.str();
     return _usageString.c_str();
   };
 
-  // all options
-  void init ( T* ptr, string name, char _short, char* _long,
-	      T def, string help, vector<T> choices ) {
-    this->s = _short;
-    this->l = _long;
-    this->nolong = this->noshort = false;
-    this->choices = choices;
-    this->init ( ptr, name, def, help );
-  };
   // no short
   void init ( T* ptr, string name, char* _long,
-	      T def, string help, vector<T> choices ) {
+	      T def, string help ) {
     this->l = _long;
     this->noshort = true;
     this->nolong = false;
-    this->choices = choices;
-    this->init ( ptr, name, def, help );
-
     this->choices = choices;
     this->init ( ptr, name, def, help );
   };
   // no long
   void init ( T* ptr, string name, char _short,
-	      T def, string help, vector<T> choices ) {
+	      T def, string help ) {
     this->s = _short;
     this->noshort = false;
     this->nolong = true;
-    this->choices = choices;
     this->init ( ptr, name, def, help );
   };
-  // no choices
+  // both
   void init ( T* ptr, string name, char _short, char* _long,
 	      T def, string help ) {
     this->s = _short;
     this->l = _long;
     this->noshort = false;
     this->nolong = false;
-    this->init ( ptr, name, def, help );
-  };
-  // no choices, no short
-  void init ( T* ptr, string name, char* _long,
-	      T def, string help ) {
-    this->l = _long;
-    this->noshort = true;
-    this->nolong = false;
-    this->init ( ptr, name, def, help );
-  };
-  // no choices, no long
-  void init ( T* ptr, string name, char _short,
-	      T def, string help ) {
-    this->s = _short;
-    this->noshort = false;
-    this->nolong = true;
     this->init ( ptr, name, def, help );
   };
   // common case
@@ -271,19 +301,20 @@ struct parameter_t: public abstractParameter_t {
     if (! atoval(s, this->value) ) return false;
     if (this->valuePtr) *(this->valuePtr) = this->value;
     this->is_set = true;
-    if ( this->choices.size() ) {
+    if ( this->choices ) {
       this->is_set = false;
-      for ( unsigned i = 0; i < this->choices.size(); i++ )
-	if ( eq ( this->choices[i], this->value )) {
+      for ( unsigned i = 0; i < this->choices->size(); i++ )
+	if ( eq ( this->choices->at(i), this->value )) {
 	  this->is_set = true;
 	}
       if ( false == this->is_set ) {
 	stringstream strm;
 	strm << "Value for option " << this->name <<
 	  " is not one of the valid choices (";
-	for ( unsigned i = 0; i < this->choices.size(); i++ ) {
-	  if ( i ) strm << ", ";
-	  strm << this->choices[i];
+	
+	strm << ::str ( this->choices->at(0) );
+	for ( unsigned i = 1; i < this->choices->size(); i++ ) {
+	  strm << ", " << ::str ( this->choices->at(i) );
 	}
 	strm << ").";
 	printf( "%s\n", strm.str().c_str() );
@@ -296,7 +327,7 @@ struct parameter_t: public abstractParameter_t {
   
   /// Parse argv starting at argv[i][j]. Return false on error. Update
   /// i and j as needed.
-  bool parse ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
+  bool parse ( unsigned &i, unsigned &j, unsigned argc, const char **argv ) {
     // i = index into argv, j = index into argv[i]
     if ( i >= argc) return true; // no more arguments
     if ( j > 0 && j >= strlen ( argv[i] )) { 
@@ -318,7 +349,7 @@ struct parameter_t: public abstractParameter_t {
   };
 
   /// returns false on error
-  bool parselong ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
+  bool parselong ( unsigned &i, unsigned &j, unsigned argc, const char **argv ) {
     // we start pointing at the long
     // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
     // printf("i = %d, j = %d\n", i, j);
@@ -353,7 +384,7 @@ struct parameter_t: public abstractParameter_t {
   };
 
   /// returns false on error
-  bool parseshort ( unsigned &i, unsigned &j, const unsigned argc, const char **argv ) {
+  bool parseshort ( unsigned &i, unsigned &j, unsigned argc, const char **argv ) {
     if ( this->noshort ) return true;
     // check shorts
     if (j < 1) { printf("Parse error, j <= 0\n"); exit(1); }
@@ -373,7 +404,8 @@ struct parameter_t: public abstractParameter_t {
 	i += 2; j=0;
       }
       else {
-	printf ("Parse error: missing value for short option %c in %s\n", this->s, argv[i]);
+	printf ("Parse error: missing value for short option %c in %s\n",
+		this->s, argv[i]);
 	i++; j=0; // avoid infinite loop if return value is not checked.
 	return false;
       }
@@ -385,6 +417,38 @@ struct parameter_t: public abstractParameter_t {
 };
 
 
+/* template < class T > const string parameter_t < vector < T >>::typestr() { */
+/*   stringstream s; */
+/*   s << "vector <" <<  */
+/*   return "test"; }; */
+
+
+/* template <> const string parameter_t < bool >::typestr() { */
+/*   return "bool"; */
+/* }; */
+/* template <> const string parameter_t < int >::typestr() { */
+/*   return "int"; */
+/* }; */
+/* template <> const string parameter_t < unsigned >::typestr() { */
+/*   return "unsigned"; */
+/* }; */
+/* template <> const string parameter_t < double >::typestr() { */
+/*   return "double"; */
+/* }; */
+/* template <> const string parameter_t < string >::typestr() { */
+/*   return "string"; */
+/* }; */
+/* template <> const string parameter_t < char >::typestr() { */
+/*   return "char"; */
+/* }; */
+/* template <> const string parameter_t < char* >::typestr() { */
+/*   return "char*"; */
+/* }; */
+/* template <> const string parameter_t < vector <char* >::typestr() { */
+/*   return "char*"; */
+/* }; */
+
+
 class parameters_t {
  public:
 
@@ -393,7 +457,15 @@ class parameters_t {
   // Use a vector to store options to keep them in order.  Name lookup
   // is linear search which is ok if number of parameters are small.
   vector < abstractParameter_t* > options;
-  vector < string > positionals, unknowns; // the part of the argvs not parsed as options
+  vector < string > positionals, unknowns; // the part of the argvs
+					   // not parsed as options
+  vector < char* > argv; // after parsing, these point to the args
+			 // after --
+  vector < char > argsbuffer; // buffer used to store char[] pointed
+			      // to by argv
+  // if passing the args after the -- to another function expecting
+  // arguments (int argc, char** argv), pass this->argv.size() for
+  // argc and this->argv.data() for argv.
 
   unsigned size() { return positionals.size(); };
 
@@ -411,8 +483,8 @@ class parameters_t {
   string usage() {
     stringstream s; 
     for ( unsigned i = 0; i < options.size(); i++ ) {
-      s << options[i]->usage();
-      printf("%s", options[i]->usage());
+      s << options[i]->usage() << "\n\n";
+      // printf("%s\n\n", options[i]->usage());
     };
     _usage = s.str();
     return _usage;
@@ -439,7 +511,20 @@ class parameters_t {
       // we're stuck, find out why
       if ( i >= argc ) break; // done with args
       if ( eq ( "--", argv[i] )) { // end of options, parse positionals
-	for ( i++; i < argc; i++ ) positionals.push_back(argv[i]);
+	for ( i++; i < argc; i++ ) {
+	  positionals.push_back(argv[i]);
+	  // push this arg, byte-by-byte, into argsbuffer
+	  j=0;
+	  do { this->argsbuffer.push_back(argv[i][j]); }
+	  while (argv[i][j++] != '\0');
+	}
+	// argv gets the pointers to the args in the argsbuffer.
+	// first pointer is to the beginning
+	this->argv.push_back ( this->argsbuffer.data() );
+	for ( j = 1; j < argsbuffer.size(); j++ )
+	  // the rest of the pointers are preceded by '\0'
+	  if ( '\0' == *(this->argsbuffer.data() + j - 1))
+	    this->argv.push_back ( this->argsbuffer.data() + j );
 	break;
       }
       if ( startswith ( "--", argv[i] ) && j == 2 ) { // unknown long option
@@ -453,7 +538,8 @@ class parameters_t {
 	continue;
       }
       if ( j != 0 ) { // sanity check
-	printf("error parsing at %s (argument %d), expected the beginning of a positional\n", argv[i], i);
+	printf("error parsing at %s (argument %d), expected the beginning of a positional\n",
+	       argv[i], i);
 	return false;
       }
       // we've reached a positional argument. Consume it and continue.
@@ -478,20 +564,22 @@ class parameters_t {
 
       // The option pointer must be dynamically cast a particular type
       // of parameter_t so we can get at it's value.
-      if ( parameter_t<int> *p = dynamic_cast < parameter_t<int> * > ( o ))
-	s << p->name << "= (int) " << p->value << "\n";
+      s << o->name << "= (" << o->typestr() << ") " << o->str() << "\n";
+      
+      /* if ( parameter_t<int> *p = dynamic_cast < parameter_t<int> * > ( o )) */
+      /* 	s << p->name << "= (int) " << p->value << "\n"; */
 
-      else if ( parameter_t<double> *p = dynamic_cast <parameter_t <double>*> ( o ))
-	s << p->name << "= (double) " << p->value << "\n";
+      /* else if ( parameter_t<double> *p = dynamic_cast <parameter_t <double>*> ( o )) */
+      /* 	s << p->name << "= (double) " << p->value << "\n"; */
 
-      else if ( parameter_t<bool> *p = dynamic_cast<parameter_t <bool>*> ( o ))
-	s << p->name << "= (bool) " << p->value << "\n";
+      /* else if ( parameter_t<bool> *p = dynamic_cast<parameter_t <bool>*> ( o )) */
+      /* 	s << p->name << "= (bool) " << p->value << "\n"; */
 
-      else if ( parameter_t<char*> *p = dynamic_cast<parameter_t <char*>*> ( o ))
-	s << p->name << "= (char*) " << p->value << "\n";
+      /* else if ( parameter_t<char*> *p = dynamic_cast<parameter_t <char*>*> ( o )) */
+      /* 	s << p->name << "= (char*) " << p->value << "\n"; */
 
-      else if ( parameter_t<string> *p = dynamic_cast<parameter_t <string>*> ( o ))
-	s << p->name << "= (string) " << p->value << "\n";
+      /* else if ( parameter_t<string> *p = dynamic_cast<parameter_t <string>*> ( o )) */
+      /* 	s << p->name << "= (string) " << p->value << "\n"; */
 
     }
     for ( unsigned i = 0; i < positionals.size(); i++ ) {

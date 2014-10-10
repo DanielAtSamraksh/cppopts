@@ -9,6 +9,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) 
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 1
 myInt = 0
@@ -26,6 +28,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) 
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 0
@@ -45,6 +49,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) 
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 1
 myInt = 0
@@ -64,6 +70,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) Short String
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 1
 myInt = 0
@@ -83,6 +91,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) Short String
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 0
@@ -102,6 +112,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) Short String
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 0
@@ -121,6 +133,8 @@ myFloat= (double) 0
 myString= (string) 
 myChars= (char*) Short String
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 0
@@ -140,6 +154,8 @@ myFloat= (double) 3.4
 myString= (string) 
 myChars= (char*) string
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 1
 myInt = 2
@@ -159,6 +175,8 @@ myFloat= (double) 3.24
 myString= (string) str
 myChars= (char*) charstring
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 6
@@ -178,6 +196,8 @@ myFloat= (double) 3.24
 myString= (string) str
 myChars= (char*) charstring
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 5
@@ -197,6 +217,8 @@ myFloat= (double) 3.24
 myString= (string) str
 myChars= (char*) charstring
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 0
@@ -216,6 +238,8 @@ myFloat= (double) 0
 myString= (string) str
 myChars= (char*) 
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 0=--chars=charstring
 1=-f3.24
 
@@ -237,6 +261,8 @@ myFloat= (double) 3.24
 myString= (string) str
 myChars= (char*) charstring
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 unknown option 0=--f
 
 myBool = 0
@@ -257,6 +283,8 @@ myFloat= (double) 3.24
 myString= (string) str
 myChars= (char*) charstring
 myNum= (string) zero
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 5
@@ -275,6 +303,8 @@ myFloat= (double) 0
 myString= (string)
 myChars= (char*)
 myNum= (string) two
+myChoices= (vector<string>) []
+myChoice= (string)
 
 myBool = 0
 myInt = 0
@@ -293,3 +323,29 @@ Parse error on --num.
 EOF
 ) && echo OK choices failure || echo Fail choices failure
 
+./test --choices "one two three" --choice one | diff -Bby --suppress-common-lines - <(cat - <<EOF
+myBool= (bool) 0
+myInt= (int) 0
+myFloat= (double) 0
+myString= (string)
+myChars= (char*)
+myNum= (string) zero
+myChoices= (vector<string>) [one, two, three]
+myChoice= (string) one
+
+myBool = 0
+myInt = 0
+myFloat = 0.000000
+myString = 
+myChars = 
+myNum = zero
+
+EOF
+) && echo OK choices success || echo Fail choices success
+
+./test --choices "one two three" --choice four | diff -Bby --suppress-common-lines - <(cat - <<EOF
+Value for option myChoice is not one of the valid choices (one, two, three).
+Parse error on --choice.
+  Argv = ./test --choices one two three --choice four
+EOF
+) && echo OK choices fail || echo Fail choices fail
