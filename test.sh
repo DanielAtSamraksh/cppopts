@@ -19,7 +19,7 @@ myString =
 myChars = 
 myNum = zero
 EOF
-) && echo ok || echo fail
+) && echo ok short flag || echo Fail short flag
 
 ./test --bool=false | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -40,7 +40,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long flag false || echo Fail long flag false
 
 ./test --bool=true | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 1
@@ -61,7 +61,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long flag true || echo Fail long flag true
 
 ./test -b -s'Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 1
@@ -82,7 +82,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK short string || echo Fail short string 
 
 ./test '--chars=Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -103,7 +103,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long string || echo Fail long string
 
 ./test -s 'Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -124,7 +124,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK short string separated || echo Fail short string separated
 
 ./test --chars 'Short String' | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -145,7 +145,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long string separated || echo Fail long string separated
 
 ./test -bi2 -s string -f 3.4 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 1
@@ -166,7 +166,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK float separated || echo Fail float separated
 
 ./test --string str --bool=false --chars=charstring --float=3.24 --int 5 -i6 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -187,7 +187,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long float || echo Fail long float
 
 ./test --string str --bool=false --chars=charstring --float=3.24 --int 5 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -208,7 +208,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long float || echo Fail long float
 
 ./test --string=str --bool=false --chars=charstring -f3.24 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -229,7 +229,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK long chars || echo Fail long chars
 
 ./test --string=str --bool=false -- --chars=charstring -f3.24 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -252,7 +252,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK double dash || echo Fail double dash
 
 ./test --string str --bool=false --f --chars=charstring --float=3.24 --int=5 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -274,7 +274,7 @@ myNum = zero
 
 
 EOF
-) && echo ok || echo fail
+) && echo OK unknown long || echo Fail unknown long 
 
 ./test --string str --bool=false --chars=charstring --float=3.24 --int=5 | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -294,7 +294,7 @@ myChars = charstring
 myNum = zero
 
 EOF
-) && echo ok || echo fail
+) && echo OK long int || echo Fail long int
 
 ./test --num two | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -314,14 +314,14 @@ myChars =
 myNum = two
 
 EOF
-) && echo OK choices success || echo Fail choices success
+) && echo OK right choice || echo Fail right choice
 
 ./test --num four | diff -Bby --suppress-common-lines - <(cat - <<EOF
 Value for option myNum is not one of the valid choices (zero, one, two).
 Parse error on --num.
   Argv = ./test --num four
 EOF
-) && echo OK choices failure || echo Fail choices failure
+) && echo OK wrong choice || echo Fail wrong choice
 
 ./test --choices "one two three" --choice one | diff -Bby --suppress-common-lines - <(cat - <<EOF
 myBool= (bool) 0
@@ -341,11 +341,11 @@ myChars =
 myNum = zero
 
 EOF
-) && echo OK choices success || echo Fail choices success
+) && echo OK right dynamic choice || echo Fail right dynamic choice
 
 ./test --choices "one two three" --choice four | diff -Bby --suppress-common-lines - <(cat - <<EOF
 Value for option myChoice is not one of the valid choices (one, two, three).
 Parse error on --choice.
   Argv = ./test --choices one two three --choice four
 EOF
-) && echo OK choices fail || echo Fail choices fail
+) && echo OK wrong dynamic choice || echo Fail wrong dynamic choice
