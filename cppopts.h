@@ -165,9 +165,8 @@ char* tolower(char* s) {
 /// method defined here.
 struct abstractParameter_t {
   string name;
-  char s;   // short argument
-  char *l;   // long argument
-  bool nolong, noshort; // true if there is no long or short defined
+  string shorts;   // short arguments
+  vector <string> longs;   // long argument;
   string help;     // help text
   bool required; // true if this is required, not used in this class, but in parameters_t.
   bool is_set; // true if this value has been set.
@@ -212,22 +211,36 @@ struct parameter_t: public abstractParameter_t {
   vector < T > *choices;
   bool choices_should_be_freed;
   choices_t<T> choicesHelper;
-  
-  parameter_t ( T * ptr, string name, char _short, char* _long,
-		T def, string help ) {
-    init ( ptr, name, _short, _long, def, help );
+
+   parameter_t () {};
+  parameter_t ( string name, string help ) {
+    this->name = name;
+    this->help = help;
   };
 
-  // no short
-  parameter_t ( T * ptr, string name, char* _long,
-		T def, string help ) {
-    init ( ptr, name, _long, def, help );
+  parameter_t<T>& addPtr ( T* p ) { this->valuePtr = p; return *this; };
+  parameter_t<T>& addName ( string n ) { this->name = n; return *this; };
+  parameter_t<T>& addHelp ( string h ) { this->help = h; return *this; };
+  parameter_t<T>& addShort ( char s ) { this->shorts += s; return *this; };
+  // parameter_t<T>& addLong ( char* l ) { this->longs.push_back( (string) l ); return *this; };
+  parameter_t<T>& addLong ( string l ) { this->longs.push_back(l); return *this; };
+  parameter_t<T>& addDefaultValue ( T v ) {
+    this->defaultValue = v;
+    this->value = v;
+    if (this->valuePtr) *(this->valuePtr) = v;
+    return *this;
   };
-
-  // no long
-  parameter_t ( T * ptr, string name, char _short,
-		T def, string help ) {
-    init ( ptr, name, _short, def, help );
+  parameter_t<T>& addChoice ( T c ) {
+    if ( ! this->choices ) {
+      this->choices = new vector<T>;
+      this->choices_should_be_freed = true;
+    }
+    this->choices->push_back ( c );
+    return *this;
+  };
+  parameter_t<T>& addChoices ( vector<T>* v ) {
+    this->choices = v;
+    return *this;
   };
 
   // virtual ~parameter_t(){};
@@ -274,10 +287,17 @@ struct parameter_t: public abstractParameter_t {
     s << this->name << "\t";
 
     // options
-    if ( this->s && this->l ) s << "-" << this->s << "/--" << this->l;
-    else if ( this->s ) s << "-" << this->s;
-    else s << "--" << this->l;
-
+    bool firstOption = true;
+    unsigned k;
+    for ( k = 0; k < this->shorts.size(); k++ ) {
+      if (! firstOption ) s << "/";
+      s << "-" << this->shorts[k];
+    }
+    for ( k = 0; k < this->longs.size(); k++ ) {
+      if (! firstOption ) s << "/";
+      s << "--" << this->longs[k];
+    }
+    
     // help
     s << "\t" << this->help;
 
@@ -296,43 +316,6 @@ struct parameter_t: public abstractParameter_t {
     // save in class member so that string won't go out of scope.
     _usageString = s.str();
     return _usageString.c_str();
-  };
-
-  // no short
-  void init ( T* ptr, string name, char* _long,
-	      T def, string help ) {
-    this->l = _long;
-    this->noshort = true;
-    this->nolong = false;
-    this->init ( ptr, name, def, help );
-  };
-  // no long
-  void init ( T* ptr, string name, char _short,
-	      T def, string help ) {
-    this->s = _short;
-    this->noshort = false;
-    this->nolong = true;
-    this->init ( ptr, name, def, help );
-  };
-  // both
-  void init ( T* ptr, string name, char _short, char* _long,
-	      T def, string help ) {
-    this->s = _short;
-    this->l = _long;
-    this->noshort = false;
-    this->nolong = false;
-    this->init ( ptr, name, def, help );
-  };
-  // common case
-  void init ( T* ptr, string name, T def, string help ) {
-    if (ptr) this->valuePtr = ptr;
-    else this->valuePtr = 0;
-    this->value = def;
-    if (this->valuePtr) *(this->valuePtr) = def;
-    this->defaultValue = def;
-    this->help = help;
-    this->name = name;
-    this->is_set = false;
   };
 
   /// Use a char* to set the value.
@@ -392,65 +375,69 @@ struct parameter_t: public abstractParameter_t {
     // we start pointing at the long
     // printf("checking %s, parsing long,  %s %s\n", this->longv[0], argv[i]+j, argv[i]);
     // printf("i = %d, j = %d\n", i, j);
-    if ( this->nolong ) return true;
-    if ( startswith ( this->l, argv[i]+2 ) ) {
-      char char_after = argv[i][ 2 + strlen(l) ];
-      switch ( char_after ) {
-      case '\0': // value in next argument
-	// printf("type = %s\n", typeid(T).name());
-	if (! strncmp(typeid(T).name(), "bool", 1)) {
-	  if (! this->set("true") ) return false;
-	  i++; j = 0;
+    for ( unsigned k = 0; k < this->longs.size(); k++ ) {
+      const char* o = this->longs[k].c_str(); 
+      if ( startswith ( o, argv[i]+2 ) ) {
+	char char_after = argv[i][ 2 + strlen(o) ];
+	switch ( char_after ) {
+	case '\0': // value in next argument
+	  // printf("type = %s\n", typeid(T).name());
+	  if (! strncmp(typeid(T).name(), "bool", 1)) {
+	    if (! this->set("true") ) return false;
+	    i++; j = 0;
+	  }
+	  else if ( i+1 >= argc ) {
+	    printf("Missing argument for option %s\n", argv[i]);
+	    i++; j=0;// avoid infinite loop
+	    return false;
+	  }
+	  else {
+	    if ( ! this->set( argv[i+1] )) return false;
+	    i += 2; j = 0;
+	  }
+	  return true; 
+	case '=': // value in this argument
+	  if (! this->set( argv[i]+2+strlen(o)+1 )) return false;
+	  i += 1; j = 0;
+	  return true;
+	default: ; // is longer than what we're looking for
 	}
-	else if ( i+1 >= argc ) {
-	  printf("Missing argument for option %s\n", argv[i]);
-	  i++; j=0;// avoid infinite loop
-	  return false;
-	}
-	else {
-	  if ( ! this->set( argv[i+1] )) return false;
-	  i += 2; j = 0;
-	}
-	return true; 
-      case '=': // value in this argument
-	if (! this->set( argv[i]+2+strlen(l)+1 )) return false;
-	i += 1; j = 0;
-	return true;
-      default: ; // is longer than what we're looking for
       }
     }
-    return true;
+    return true; // no match
   };
 
   /// returns false on error
   bool parseshort ( unsigned &i, unsigned &j, unsigned argc, const char **argv ) {
-    if ( this->noshort ) return true;
-    // check shorts
-    if (j < 1) { printf("Parse error, j <= 0\n"); exit(1); }
-    // printf("type = %s\n", typeid(T).name());
-    if ( this->s == argv[i][j] ) {
-      if (! strncmp(typeid(T).name(), "bool", 1)) {
-	if (! this->set("true")) return false;
-	j++;
+    for ( unsigned k = 0; k < this->shorts.size(); k++ ) {
+      char o = this->shorts[k]; 
+      // check shorts
+      if (j < 1) { printf("Parse error, j <= 0\n"); exit(1); }
+      // printf("type = %s\n", typeid(T).name());
+      if ( o == argv[i][j] ) {
+	if (! strncmp(typeid(T).name(), "bool", 1)) {
+	  if (! this->set("true")) return false;
+	  j++;
+	}
+	else if (j+1 < strlen(argv[i])) { // look for value adjacent
+	  if (! this->set ( argv[i]+j+1 )) return false;
+	  i++; j = 0;
+	}
+	else if ( i + 1 < argc ) { // look for value in next arg
+	  if (! this->set ( argv[i+1] )) return false;
+	  *(this->valuePtr) = this->value;
+	  i += 2; j=0;
+	}
+	else {
+	  printf ("Parse error: missing value for short option %c in %s\n",
+		  o, argv[i]);
+	  i++; j=0; // avoid infinite loop if return value is not checked.
+	  return false;
+	}
+	return true;
       }
-      else if (j+1 < strlen(argv[i])) {
-	if (! this->set ( argv[i]+j+1 )) return false;
-	i++; j = 0;
-      }
-      else if ( i + 1 < argc ) {
-	if (! this->set ( argv[i+1] )) return false;
-	*(this->valuePtr) = this->value;
-	i += 2; j=0;
-      }
-      else {
-	printf ("Parse error: missing value for short option %c in %s\n",
-		this->s, argv[i]);
-	i++; j=0; // avoid infinite loop if return value is not checked.
-	return false;
-      }
-      return true;
     }
-    return true;
+    return true; // no match
   };
 
 };

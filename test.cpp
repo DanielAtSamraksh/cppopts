@@ -19,61 +19,85 @@ struct testParameters_t : parameters_t {
 
     // myBool
     options.push_back (
-      new parameter_t < bool > (
-	&(this->myBool), "myBool", 'b', (char*) "bool", false, "help bool" ));
+      &((*(new parameter_t < bool >))
+	.addName("myBool").addPtr(&(this->myBool))
+	.addShort('b').addLong("bool").addDefaultValue(false)
+	.addHelp("help bool")));
+
 
     // myInt
     options.push_back (
-      new parameter_t < int > (
-	&(this->myInt), "myInt", 'i', (char*) "int", 0, "help int" ));
+      &((*(new parameter_t < int >))
+	.addPtr(&(this->myInt)).addName("myInt")
+	.addShort('i').addLong("int").addDefaultValue(0)
+	.addHelp("help int")));
 
     // myFloat
     options.push_back (
-      new parameter_t < double > (
-	&(this->myFloat), "myFloat", 'f', (char*) "float", 0.0, "help float" ));
+      &((*(new parameter_t < double >))
+	.addPtr( &(this->myFloat) )
+	.addName( "myFloat" )
+	.addShort( 'f' )
+	.addLong( "float" )
+	.addDefaultValue ( 0.0 )
+	.addHelp ( "help float" )));
 
     // myString
     options.push_back (
-      new parameter_t < string > (
-	&(this->myString), "myString", 'S', (char*) "string", "", "help for myString." ));
+      &((*(new parameter_t < string >))
+	.addPtr( &(this->myString) )
+	.addName( "myString" )
+	.addShort( 'S' )
+	.addLong( "string" )
+	.addHelp( "help for myString." )));
 
     // myChars
     options.push_back (
-      new parameter_t < char* > (
-	&(this->myChars), "myChars", 's', (char*) "chars", (char *) "", "help for myChars" ));
+      &((*(new parameter_t < char* >))
+	.addPtr( &(this->myChars) )
+	.addName( "myChars" )
+	.addShort( 's' )
+	.addLong( "chars" )
+	.addDefaultValue ( (char*) "" )
+	.addHelp ( "help for myChars" )));
 
     // myNum - user must select between options stored in vector
     // stringv note the "new". Without the new, stringv goes out of
     // scope when the constructor finishes. We want it to persist.
-    parameter_t < string > *stringp = new parameter_t < string > (
-      &(this->myNum), "myNum", 'n', (char*) "num",
-      "zero", "one of zero, one, or two");
-    options.push_back ( stringp );
-    stringp->setChoices("zero")("one")("two");
-    
-    
-    // vector <string> *stringv = new vector<string>; 
-    // stringv->push_back("zero");
-    // stringv->push_back("one");
-    // stringv->push_back("two");
-    // stringp->choices = stringv; // set the choices member to the choices.
-
+    options.push_back (
+      &((*(new parameter_t < string >))
+	.addPtr( &(this->myNum) )
+	.addName( "myNum" )
+	.addShort( 'n' )
+	.addLong( "num" )
+	.addHelp( "one of zero, one, or two" )
+	.addDefaultValue( "zero" )
+	.addChoice( "zero" )
+	.addChoice( "one" )
+	.addChoice( "two" )));
 
     // Dynamic choice, pass in the choices in one option (myChoices)
     // and use them to verify another option (myChoice).
 
     // myChoices
-    parameter_t < vector<string> > * choicesp =
-      new parameter_t < vector<string> > (
-	&(this->myChoices), "myChoices", (char*) "choices",
-	vector<string>(), "Possible choices." );
-    options.push_back ( choicesp );
+
+      
+    parameter_t < vector<string> > *myChoices_ = new parameter_t< vector <string> >;
+    (*myChoices_)
+      .addPtr( &(this->myChoices) )
+      .addName( "myChoices" )
+      .addLong( "choices" )
+      .addHelp( "Possible choices." );
+    options.push_back ( myChoices_ );
     
     // myChoice - use value of myChoices to screen this input.
-    parameter_t < string > *choicep = new parameter_t < string > (
-      &(this->myChoice), "myChoice", (char*) "choice", "", "My choice.");
-    options.push_back ( choicep );
-    choicep->choices = &choicesp->value;
+    options.push_back (
+      &((*(new parameter_t < string >))
+	.addPtr( &(this->myChoice) )
+	.addName( "myChoice" )
+	.addLong( "choice" )
+	.addHelp( "My choice." )
+	.addChoices( &(myChoices_->value) )));
 
   };
 };
