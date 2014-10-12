@@ -218,7 +218,10 @@ struct parameter_t: public abstractParameter_t {
     this->help = help;
   };
 
-  parameter_t<T>& addPtr ( T* p ) { this->valuePtr = p; return *this; };
+  parameter_t<T>& addPtr ( T* p ) {
+    this->valuePtr = p;
+    return *this;
+  };
   parameter_t<T>& addName ( string n ) { this->name = n; return *this; };
   parameter_t<T>& addHelp ( string h ) { this->help = h; return *this; };
   parameter_t<T>& addShort ( char s ) { this->shorts += s; return *this; };
