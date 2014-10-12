@@ -43,6 +43,7 @@ const string str ( vector < T > v ) {
 /// print out the type of a variable
 const string typestr ( const bool x)    { return "bool"; };
 const string typestr ( const int x)     { return "int"; };
+const string typestr ( const unsigned x)     { return "unsigned"; };
 const string typestr ( const double x)  { return "double"; };
 const string typestr ( const string x)  { return "string"; };
 const string typestr ( const char x)   { return "char"; };
@@ -293,11 +294,13 @@ struct parameter_t: public abstractParameter_t {
     bool firstOption = true;
     unsigned k;
     for ( k = 0; k < this->shorts.size(); k++ ) {
-      if (! firstOption ) s << "/";
+      if ( firstOption ) firstOption = false;
+      else s << "|";
       s << "-" << this->shorts[k];
     }
     for ( k = 0; k < this->longs.size(); k++ ) {
-      if (! firstOption ) s << "/";
+      if ( firstOption ) firstOption = false;
+      else s << "|";
       s << "--" << this->longs[k];
     }
     
