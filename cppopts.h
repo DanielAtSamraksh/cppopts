@@ -410,7 +410,7 @@ struct parameter_t: public abstractParameter_t {
 	}
       }
     }
-    return true; // no match
+    return true; // no match, no error
   };
 
   /// returns false on error
@@ -524,9 +524,11 @@ class parameters_t {
 
   // return false on failure.
   bool parse (unsigned argc, const char **argv) {
-    unsigned i=1, j=0;
+    unsigned i=0, j=0;
     unsigned oldi, oldj;
     do { do {
+	// printf("parsing, looking at %s\n", argv[i]);
+
       oldi = i; oldj = j;
       for ( unsigned k = 0; k < options.size(); k++ ) {
 	// printf( "  at %s looking for %s\n", argv[i], options[k]->name.c_str() );
@@ -541,6 +543,9 @@ class parameters_t {
 	}
       }} while ( oldi != i || oldj != j );
       // we're stuck, find out why
+      
+      //      printf("parsing, stuck at %s\n", argv[i]);
+      
       if ( i >= argc ) break; // done with args
       if ( eq ( "--", argv[i] )) { // end of options, parse positionals
 	for ( i++; i < argc; i++ ) {

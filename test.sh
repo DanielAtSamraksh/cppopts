@@ -319,7 +319,7 @@ EOF
 ./test --num four | diff -Bby --suppress-common-lines - <(cat - <<EOF
 Value for option myNum is not one of the valid choices (zero, one, two).
 Parse error on --num.
-  Argv = ./test --num four
+  Argv = --num four
 EOF
 ) && echo OK wrong choice || echo Fail wrong choice
 
@@ -346,6 +346,6 @@ EOF
 ./test --choices "one two three" --choice four | diff -Bby --suppress-common-lines - <(cat - <<EOF
 Value for option myChoice is not one of the valid choices (one, two, three).
 Parse error on --choice.
-  Argv = ./test --choices one two three --choice four
+  Argv = --choices one two three --choice four
 EOF
 ) && echo OK wrong dynamic choice || echo Fail wrong dynamic choice
