@@ -213,8 +213,19 @@ struct parameter_t: public abstractParameter_t {
   bool choices_should_be_freed;
   choices_t<T> choicesHelper;
 
-   parameter_t () {};
-  parameter_t ( string name, string help ) {
+  void init () {
+    // variables in C++ are generally not initialized by default. So
+    // do it here and call this function from all the constructors.
+    this->valuePtr = 0;
+    this->choices = 0;
+    choices_should_be_freed = 0;
+    this->required = 0;
+    this->is_set = 0;
+  };
+
+  parameter_t () { this->init(); };
+  parameter_t ( string name, string help ): valuePtr(0), choices(0)  {
+    this->init();
     this->name = name;
     this->help = help;
   };
@@ -288,7 +299,7 @@ struct parameter_t: public abstractParameter_t {
     stringstream s;
 
     // name
-    s << this->name << "\t";
+    s << this->name << " (" << this->typestr() << ")  ";
 
     // options
     bool firstOption = true;
@@ -303,21 +314,28 @@ struct parameter_t: public abstractParameter_t {
       else s << "|";
       s << "--" << this->longs[k];
     }
+    s << "\n";
     
     // help
-    s << "\t" << this->help;
+    unsigned h0=0, h1;
+    while ( h0 < this->help.size() ) {
+      h1 = this->help.find ( '\n', h0 );
+      s << "  " << this->help.substr ( h0, h1-h0 ) << "\n";
+      h0 = (h1 < h1+1)? h1+1: this->help.size();
+    }
+
 
     // default value
-    s << " Default value = " << ::str ( this->defaultValue ) << ".";
+    s << "  Default value = " << ::str ( this->defaultValue ) << "\n";
 
     // choices
     if ( this->choices && this->choices->size() > 0 ) {
-      s << " Choices = " << ::str ( this->choices->at(0) );
+      s << "  Choices = \n    " << ::str ( this->choices->at(0) ) << "\n";
       for (unsigned i=1; i < this->choices->size(); i++) {
-    	s << ", " << ::str ( this->choices->at(i) );
+    	s << "    " << ::str ( this->choices->at(i) ) << "\n";
       }
-      s << ".";
     }
+    // s << "\n";
 
     // save in class member so that string won't go out of scope.
     _usageString = s.str();
@@ -515,7 +533,7 @@ class parameters_t {
   string usage() {
     stringstream s; 
     for ( unsigned i = 0; i < options.size(); i++ ) {
-      s << options[i]->usage() << "\n\n";
+      s << options[i]->usage() << "\n";
       // printf("%s\n\n", options[i]->usage());
     };
     _usage = s.str();
