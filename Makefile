@@ -16,7 +16,7 @@ test2: test2.cpp cppopts.h
 test3: test3.cpp cppopts2.h Makefile
 	g++ -g test3.cpp -o test3
 	# gdb test3
-	./test3 x 4 y 4
+	./test3 x 4 y 4 string "this is a string"
 
 clean: 
 	rm -f test test2 test3

@@ -324,7 +324,6 @@ struct parameter_t: public abstractParameter_t {
       h0 = (h1 < h1+1)? h1+1: this->help.size();
     }
 
-
     // default value
     s << "  Default value = " << ::str ( this->defaultValue ) << "\n";
 
