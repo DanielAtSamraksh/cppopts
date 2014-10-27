@@ -191,7 +191,8 @@ class opts_t {
       for ( unsigned i = 0; i < this->choices.size(); i++ ) {
 	if ( this->choices[i] == *(this->value) ) return true;
       }
-      cout << "Value " << *(this->value) << ":\n";
+      cout << "Bad value (" << *(this->value) << ") for option " << this->name 
+	   << ". Must be one of:\n";
       for ( unsigned i = 0; i < this->choices.size(); i++ ) {
 	cout << "  " << this->choices[i] << "\n";
       }

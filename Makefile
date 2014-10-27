@@ -13,7 +13,7 @@ test2: test2.cpp cppopts.h
 	g++ test2.cpp -o test2
 	./test2
 
-test3: test3.cpp cppopts2.h Makefile
+test3: test3.cpp commandline.h Makefile
 	g++ -g test3.cpp -o test3
 	# gdb test3
 	./test3 x 4 y 4 string "this is a string"
