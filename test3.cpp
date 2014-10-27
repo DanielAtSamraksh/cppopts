@@ -5,15 +5,15 @@ using std::cout;
 
 int main ( int argc, char** argv ) {
 
-  int x=1, y=2;
-  float pi=3.14;
-  string str;
+  int x=1, y=2;  // declare two ints with default values
+  float pi=3.14; // declare float with default value
+  string str="default";    // declare string with default value
 
-  opts_t opts; 
+  opts_t opts; // declare an opts_t instance and configure it.
   opts
-    .addValue("x", "x value", &x)
-    .addValue("y", "y value", &y)
-    .addChoice( 1 )
+    .addValue("x", "x value", &x) // add option for int x
+    .addValue("y", "y value", &y) // add option for int y
+    .addChoice( 1 )               // add choices for y (the last option)
     .addChoice( 2 )
     .addChoice( 3 )
     .addValue("pi", "pi value", &pi)
@@ -27,5 +27,7 @@ int main ( int argc, char** argv ) {
     cout << opts.usage();
     exit (1);
   }
+  
+  cout << "Dumping values:\n" << opts.dump();
 
 };

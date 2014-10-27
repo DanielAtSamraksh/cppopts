@@ -14,6 +14,10 @@ using std::stringstream;
 using std::string;
 
 
+#ifdef _demo_
+
+#endif
+
 // todo:  long and short, parse, choices, map (no duplicate names)
 
 template < class T >
@@ -108,6 +112,14 @@ class opts_t {
     return s.str();
   };
 
+  string dump() {
+    stringstream s; 
+    for ( unsigned i = 0; i < opts.size(); i++ ) {
+      s << opts[i]->dump() << "\n";
+    }
+    return s.str();
+  };
+
  private:
   class opt_t {
     // http://stackoverflow.com/questions/7405740/how-can-i-initialize-base-class-member-variables-in-derived-class-constructor
@@ -123,6 +135,7 @@ class opts_t {
     virtual bool parse ( char* ) = 0;
     virtual string usage() = 0;
     virtual string str() = 0;
+    virtual string dump() = 0;
     virtual string type() = 0;
     virtual string parseMsg ( bool ok ) {
       stringstream s;
@@ -182,6 +195,12 @@ class opts_t {
       return s.str();
     };
 
+    virtual string dump() {
+      stringstream s;
+      s << this->name << ": " << *(this->value);
+      return s.str();
+    };
+      
     virtual string type() {
       return typestr ( this->defaultValue );
     };
