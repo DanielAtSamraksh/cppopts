@@ -13,12 +13,65 @@ using std::vector;
 using std::stringstream;
 using std::string;
 
+/// Simple command-line parser modeled after the ns3 CommandLine class. 
+///
+/// Add values to initialize by calling .addValue( string name, T &value ) 
+/// where T is the type of value. This will configure the parser set the variable
+/// "value" when it encounters "name". 
+/// For example: ```opts.addValue( "--count", &count ); opts.parse(argc, argv); ``` 
+/// will set the variable count to 4 when parsing "--count=4" or "--count 4". 
+///
+/// The methods "addValue" and "addChoice" return the parser, so they can be strung
+/// together. See the example program below.
+/// 
+/// The "parse ( int argc, char *argv[] )" method returns true if it
+/// parses with no errors. It is an error to encounter an unknown option.
+/// 
+/// Parsing storts from argv[0], so if you're calling parse directly from main,
+/// you'll probably want to skip the first argv (which contains the program name.)
+/// Eg: args.parse(argc-1, argv+1)
+/// 
+/// Parsing stops when a double dash (--) is encountered and the argc and argv members 
+/// are set where parsing left off.
 
-#ifdef _demo_
+#ifdef _example_use_ // this is a documenting example
+#include "commandline.h"
 
-#endif
+using std::stringstream;
+using std::cout;
 
-// todo:  long and short, parse, choices, map (no duplicate names)
+int main ( int argc, char** argv ) {
+
+  int x=1, y=2;  // declare two ints with default values
+  float pi=3.14; // declare float with default value
+  string str="default";    // declare string with default value
+
+  opts_t opts; // declare an opts_t instance and configure it.
+  opts
+    .addValue("x", "Help string for x value", &x) // add option for int x
+    .addValue("y", "Help string for y value", &y) // add option for int y
+    .addChoice( 1 )  // add choices for y (the last option)
+    .addChoice( 2 )
+    .addChoice( 3 )
+    .addValue("pi", "Help string for pi value", &pi)
+    .addValue("string", "Help string for string value", &str);
+
+  cout << "Usage:\n" << argv[0] << " [options]\n" 
+       << opts.usage() << "\n\n";
+
+  cout << "Parsing arguments to " << argv[0] << "\n\n";
+  // Note that parsing starts from argv[0], so call parse on arc-1 and argv+1.
+  if ( ! opts.parse ( argc-1, argv+1 ) ) {
+    cout << "error parsing\n";
+    cout << opts.usage();
+  }
+  
+  cout << "\nDumping values before exit:\n" << opts.dump();
+
+};
+#endif //  example
+
+// todo:  long and short
 
 template < class T >
 string typestr ( T v ) {
@@ -37,6 +90,12 @@ string typestr ( T v ) {
 class opts_t {
 
  public:
+  // argc and argv are set to point to the parameters after the "--"
+  int argc;
+  char **argv;
+  
+ opts_t(): argc(-1), argv((char**)0) {};
+
   template < class T > 
     opts_t &addValue ( string name, string help, T* v ) {
     // check for duplicates
@@ -72,23 +131,34 @@ class opts_t {
 
 
   bool parse ( int argc, char *argv[] ) {
+    bool ok = true;
     for ( unsigned i = 0 ; i < argc ; i++ ) {
+      if ( ! strcmp ( "--", argv[i] )) {
+	// stop parsing, set the argc and argv members.
+	this->argc = argc-i-1; 
+	this->argv = argv+i+1;
+	return ok;
+      }
       char* value = strchr ( argv[i], '=' ); 
       string name = value? string(argv[i], value): argv[i]; 
       if (value) value += 1; // move value off the '='
 
-      bool ok = false;
+      ok = false;
+
       for ( unsigned j = 0; j < opts.size(); j++ ) {
 	opt_t *o = opts[j];
 	if ( o->name == name ) {
 	  if ( value ) {
 	    ok = o->parse ( value );
+	    continue;
 	  }
 	  else if ( o->isflag ()) {
 	    ok = o->parse ((char*) "true" );
+	    continue;
 	  }
 	  else if ( i + 1 < argc ) {
 	    ok = o->parse ( argv[++i] );
+	    continue;
 	  }
 	  else {
 	    cout << "Missing value for argument " << i << "(" << argv[i] << ")\n";
@@ -101,7 +171,7 @@ class opts_t {
 	return false; // not found
       }
     }
-    return true;
+    return ok;
   };
 
   string usage() {
@@ -116,6 +186,12 @@ class opts_t {
     stringstream s; 
     for ( unsigned i = 0; i < opts.size(); i++ ) {
       s << opts[i]->dump() << "\n";
+    }
+    if ( this->argc > 0 ) {
+      s << "argc = " << this->argc << ", argv =\n";
+      for ( unsigned i = 0; i < this->argc; i++ ) {
+	s << "  [" << i << "] " << this->argv[i] << "\n";
+      }
     }
     return s.str();
   };
