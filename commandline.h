@@ -319,10 +319,9 @@ class opts_t {
     };
 
     bool isflag () { return false; };
-  };
+  }; // end declaration of opt_basictype_t
 
-  typedef vector < opt_t* > optsV_t;
-  optsV_t opts; 
+  vector < opt_t* > opts;
 
 };
 
