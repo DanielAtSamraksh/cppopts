@@ -1,13 +1,15 @@
 
 #include <sstream> // stringstream
-#include <iostream> // cout
+// #include <iostream> // cout // don't use because dce doesn't like cout. Use printf instead.
 #include <vector> // vector type
 #include <map> // map type
 #include <string> // string type
 #include <typeinfo> // typeid
 #include <cstring> // strchr, strncmp
 #include <cstdlib> // exit
-using std::cout;
+#include <cstdio> // printf
+
+// using std::cout;
 using std::map;
 using std::vector;
 using std::stringstream;
@@ -56,17 +58,19 @@ int main ( int argc, char** argv ) {
     .addValue("pi", "Help string for pi value", &pi)
     .addValue("string", "Help string for string value", &str);
 
-  cout << "Usage:\n" << argv[0] << " [options]\n" 
-       << opts.usage() << "\n\n";
+  stringstream ss;
+  ss << "Usage:\n" << argv[0] << " [options]\n" 
+     << opts.usage() << "\n\n";
 
-  cout << "Parsing arguments to " << argv[0] << "\n\n";
+  ss << "Parsing arguments to " << argv[0] << "\n\n";
   // Note that parsing starts from argv[0], so call parse on arc-1 and argv+1.
   if ( ! opts.parse ( argc-1, argv+1 ) ) {
-    cout << "error parsing\n";
-    cout << opts.usage();
+    ss << "error parsing\n";
+    ss << opts.usage();
   }
   
-  cout << "\nDumping values before exit:\n" << opts.dump();
+  ss << "\nDumping values before exit:\n" << opts.dump();
+  printf ( "%s", ss.str().c_str() );
 
 };
 #endif //  example
@@ -105,10 +109,13 @@ class opts_t {
 
   template < class T > 
     opts_t &addValue ( string name, string help, T* v ) {
+    stringstream ss;
+
     // check for duplicates
     for ( unsigned i = 0; i < opts.size(); i++) {
       if ( name == opts[i]->name ) { 
-	cout << "Error: duplicate " << name << "\n"; 
+	ss << "Error: duplicate " << name << "\n"; 
+	printf ( "%s", ss.str().c_str() );
 	exit ( 1 );
       }
     }
@@ -119,9 +126,12 @@ class opts_t {
 
   template < class T >
     opts_t &addChoice ( T c ) { 
+    stringstream ss;
+
     unsigned last = opts.size() - 1;
     if ( last < 0 ) { 
-      cout << "Error: no option to add a choice to.";
+      ss << "Error: no option to add a choice to.";
+      printf ( "%s", ss.str().c_str() );
       exit (1); 
     }
 
@@ -136,9 +146,10 @@ class opts_t {
 	opt2->addChoice ( (string) c ); 
 	return *this;
       }
-      cout << "Error: can't add choice because of a type mismatch.\n";
-      cout << "Choice " << c << " has type " << typestr ( c )
-	   << " but option " << opts[last] << " has type " << opts[last]->type() << "\n\n";
+      ss << "Error: can't add choice because of a type mismatch.\n";
+      ss << "Choice " << c << " has type " << typestr ( c )
+	 << " but option " << opts[last] << " has type " << opts[last]->type() << "\n\n";
+      printf ( "%s", ss.str().c_str() );
       exit ( 1 );
     }
     opt->addChoice ( c );
@@ -147,6 +158,8 @@ class opts_t {
 
 
   bool parse ( int argc, char *argv[] ) {
+    stringstream ss;
+
     bool ok = true;
     for ( int i = 0 ; i < argc ; i++ ) {
       if ( ! strcmp ( "--", argv[i] )) {
@@ -166,24 +179,39 @@ class opts_t {
 	if ( o->name == name ) {
 	  if ( value ) {
 	    ok = o->parse ( value );
-	    continue;
+	    if ( !ok ) {
+	      ss << "Error parsing value (" << value << ") for option " << name << "\n";
+	      printf ( "%s", ss.str().c_str() );
+	      return false;
+	    }
 	  }
 	  else if ( o->isflag ()) {
 	    ok = o->parse ((char*) "true" );
-	    continue;
+	    if ( !ok ) {
+	      ss << "Error parsing bool value (true) for option " << name << "\n";
+	      printf ( "%s", ss.str().c_str() );
+	      return false;
+	    }
 	  }
 	  else if ( i + 1 < argc ) {
 	    ok = o->parse ( argv[++i] );
-	    continue;
+	    if ( !ok ) {
+	      ss << "Error parsing value (" << argv[i] << ") for option " << name << "\n";
+	      printf ( "%s", ss.str().c_str() );
+	      return false;
+	    }
 	  }
 	  else {
-	    cout << "Missing value for argument " << i << "(" << argv[i] << ")\n";
+	    ss << "Missing value for argument " << i << "(" << argv[i] << ")\n";
+	    printf ( "%s", ss.str().c_str() );
 	    return false;
 	  }
 	}
       }
       if ( ! ok ) {
-	cout << "Error parsing option " << name << "\n";
+	ss << "Error parsing unknown option " << name << "\n";
+	printf ( "%s", ss.str().c_str() );
+
 	return false; // not found
       }
     }
@@ -233,7 +261,7 @@ class opts_t {
       s << ( ok ? "successfully ": "unsuccessfully " ) << "parsed " 
 	<< "(" << this->type() << ") " 
 	<< this->name << " " << this->str() << "\n";
-      cout << s.str();
+      printf ( "%s\n", s.str().c_str() ); // cout << s.str();
       return s.str();
     };
   };
@@ -297,15 +325,18 @@ class opts_t {
     };
 
     virtual bool checkChoices() {
+      stringstream ss;
+
       if ( ! this->hasChoices ) return true;
       for ( unsigned i = 0; i < this->choices.size(); i++ ) {
 	if ( this->choices[i] == *(this->value) ) return true;
       }
-      cout << "Bad value (" << *(this->value) << ") for option " << this->name 
-	   << ". Must be one of:\n";
+      ss << "Bad value (" << *(this->value) << ") for option " << this->name 
+	 << ". Must be one of:\n";
       for ( unsigned i = 0; i < this->choices.size(); i++ ) {
-	cout << "  " << this->choices[i] << "\n";
+	ss << "  " << this->choices[i] << "\n";
       }
+      printf ( "%s", ss.str().c_str() );
       return false;
     };
 
@@ -331,6 +362,8 @@ isflag () { return true; };
 
 template <> bool opts_t::opt_basictype_t < bool >::
 parse ( char* v ) { 
+  stringstream ss;
+
   bool ok = false;
   if ( strncmp ((char*) "true", v, strlen ( v )) == 0 || 
        strncmp ((char*) "TRUE", v, strlen ( v )) == 0 || 
@@ -345,7 +378,8 @@ parse ( char* v ) {
     ok = true;
   }
   else {
-    cout << "Not a bool value: " << v << "\n"; 
+    ss << "Not a bool value: " << v << "\n"; 
+    printf ( "%s", ss.str().c_str() );
   }
   ok = ok && this->checkChoices();
   this->parseMsg ( ok );
