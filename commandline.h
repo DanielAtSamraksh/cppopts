@@ -77,7 +77,8 @@ int main ( int argc, char** argv ) {
 template < class T >
 string typestr ( T v ) {
   string t = typeid( v ).name();
-  return typeid( int ).name() == t?      "int":
+  return typeid( bool ).name() == t?      "bool":
+    typeid( int ).name() == t?            "int":
     typeid( unsigned ).name() == t?      "unsigned":
     typeid( unsigned long ).name() == t? "unsigned long":
     typeid( long ).name() == t?          "long":
@@ -147,7 +148,7 @@ class opts_t {
 
   bool parse ( int argc, char *argv[] ) {
     bool ok = true;
-    for ( unsigned i = 0 ; i < argc ; i++ ) {
+    for ( int i = 0 ; i < argc ; i++ ) {
       if ( ! strcmp ( "--", argv[i] )) {
 	// stop parsing, set the argc and argv members.
 	this->argc = argc-i-1; 
@@ -204,7 +205,7 @@ class opts_t {
     }
     if ( this->argc > 0 ) {
       s << "argc = " << this->argc << ", argv =\n";
-      for ( unsigned i = 0; i < this->argc; i++ ) {
+      for ( int i = 0; i < this->argc; i++ ) {
 	s << "  [" << i << "] " << this->argv[i] << "\n";
       }
     }
