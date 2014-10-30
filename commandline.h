@@ -127,6 +127,8 @@ class opts_t {
     opt_basictype_t < T > *opt = 
       dynamic_cast < opt_basictype_t<T>* > ( opts[ last ] );
     if ( ! opt ) {
+      // type mismatch; 
+      // check if it's between string and something compatible (char[])
       opt_basictype_t < string > *opt2 = 
 	dynamic_cast < opt_basictype_t<string>* > ( opts[ last ] );
       if ( opt2 ) {
