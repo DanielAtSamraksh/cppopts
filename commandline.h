@@ -339,12 +339,12 @@ parse ( char* v ) {
   }
   else if ( strncmp ((char*) "false", v, strlen ( v )) == 0 || 
 	    strncmp ((char*) "FALSE", v, strlen ( v )) == 0 ||
-	    strncmp ((char*) "1", v, strlen ( v )) == 0 ) {
+	    strncmp ((char*) "0", v, strlen ( v )) == 0 ) {
     *(this->value) = false;
     ok = true;
   }
   else {
-    cout << "Not a bool value: " << v; 
+    cout << "Not a bool value: " << v << "\n"; 
   }
   ok = ok && this->checkChoices();
   this->parseMsg ( ok );
