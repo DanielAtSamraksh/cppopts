@@ -83,6 +83,8 @@ string typestr ( T v ) {
     typeid( double ).name() == t?        "double":
     typeid( float ).name() == t?         "float":
     typeid( string ).name() == t?        "string":
+    typeid( char* ).name() == t?         "char*":
+    typeid( char** ).name() == t?        "char**":
     t;
 };
 
