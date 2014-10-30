@@ -123,12 +123,19 @@ class opts_t {
       cout << "Error: no option to add a choice to.";
       exit (1); 
     }
+
     opt_basictype_t < T > *opt = 
       dynamic_cast < opt_basictype_t<T>* > ( opts[ last ] );
     if ( ! opt ) {
+      opt_basictype_t < string > *opt2 = 
+	dynamic_cast < opt_basictype_t<string>* > ( opts[ last ] );
+      if ( opt2 ) {
+	opt2->addChoice ( (string) c ); 
+	return *this;
+      }
       cout << "Error: can't add choice because of a type mismatch.\n";
       cout << "Choice " << c << " has type " << typestr ( c )
-	   << "but option " << opts[last] << " has type " << opts[last]->type() << "\n";
+	   << " but option " << opts[last] << " has type " << opts[last]->type() << "\n\n";
       exit ( 1 );
     }
     opt->addChoice ( c );
