@@ -73,6 +73,7 @@ int main ( int argc, char** argv ) {
 
 // todo:  long and short
 
+/// output the name of a variable's type.
 template < class T >
 string typestr ( T v ) {
   string t = typeid( v ).name();
