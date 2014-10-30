@@ -211,7 +211,6 @@ class opts_t {
     return s.str();
   };
 
- private:
   class opt_t {
     // http://stackoverflow.com/questions/7405740/how-can-i-initialize-base-class-member-variables-in-derived-class-constructor
   protected:
