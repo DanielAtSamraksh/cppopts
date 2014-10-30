@@ -97,7 +97,10 @@ class opts_t {
   int argc;
   char **argv;
   
- opts_t(): argc(-1), argv((char**)0) {};
+  opts_t() {
+    this->argc = -1; 
+    this->argv = (char **) 0;
+  };
 
   template < class T > 
     opts_t &addValue ( string name, string help, T* v ) {
