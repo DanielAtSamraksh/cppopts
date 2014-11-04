@@ -1,3 +1,5 @@
+#ifndef _COMMANDLINE_H
+#define _COMMANDLINE_H
 
 #include <sstream> // stringstream
 // #include <iostream> // cout // don't use because dce doesn't like cout. Use printf instead.
@@ -8,6 +10,7 @@
 #include <cstring> // strchr, strncmp
 #include <cstdlib> // exit
 #include <cstdio> // printf
+#include <cerrno> // errno
 
 // using std::cout;
 using std::map;
@@ -40,7 +43,7 @@ using std::string;
 #include "commandline.h"
 
 using std::stringstream;
-using std::cout;
+//using std::cout;
 
 int main ( int argc, char** argv ) {
 
@@ -176,6 +179,9 @@ class opts_t {
 
       for ( unsigned j = 0; j < opts.size(); j++ ) {
 	opt_t *o = opts[j];
+
+	printf ( "commandline parse: name = %s\n", o->name.c_str() );
+
 	if ( o->name == name ) {
 	  if ( value ) {
 	    ok = o->parse ( value );
@@ -184,6 +190,7 @@ class opts_t {
 	      printf ( "%s", ss.str().c_str() );
 	      return false;
 	    }
+	    else break; // correctly parsed this option, go to the next one.
 	  }
 	  else if ( o->isflag ()) {
 	    ok = o->parse ((char*) "true" );
@@ -192,6 +199,7 @@ class opts_t {
 	      printf ( "%s", ss.str().c_str() );
 	      return false;
 	    }
+	    else break; // correctly parsed this option, go to the next one.
 	  }
 	  else if ( i + 1 < argc ) {
 	    ok = o->parse ( argv[++i] );
@@ -200,6 +208,7 @@ class opts_t {
 	      printf ( "%s", ss.str().c_str() );
 	      return false;
 	    }
+	    else break; // correctly parsed this option, go to the next one.
 	  }
 	  else {
 	    ss << "Missing value for argument " << i << "(" << argv[i] << ")\n";
@@ -218,7 +227,7 @@ class opts_t {
     return ok;
   };
 
-  string usage() {
+  string usage () {
     stringstream s;
     for ( unsigned i = 0; i < opts.size(); i++ ) {
       s << opts[i]->usage() << "\n";
@@ -226,7 +235,7 @@ class opts_t {
     return s.str();
   };
 
-  string dump() {
+  string dump () {
     stringstream s; 
     for ( unsigned i = 0; i < opts.size(); i++ ) {
       s << opts[i]->dump() << "\n";
@@ -240,12 +249,29 @@ class opts_t {
     return s.str();
   };
 
-  class opt_t {
+  string str () {
+    stringstream s; 
+    for ( unsigned i = 0; i < opts.size(); i++ ) {
+      if ( i ) s << " ";
+      // note that we are not escaping anything
+      s << opts[i]->name << "=" << opts[i]->str();
+    }
+    if ( this->argc > 0 ) {
+      s << " -- ";
+      for ( int i = 1; i < this->argc; i++ ) {
+	if ( i ) s << " ";
+	s << this->argv[i];
+      }
+    }
+    return s.str();
+  };
+
+  struct opt_t {
     // http://stackoverflow.com/questions/7405740/how-can-i-initialize-base-class-member-variables-in-derived-class-constructor
-  protected:
+    //  protected:
+  public:
     opt_t ( string n, string h ): name(n), help(h), hasChoices(false) {};
 
-  public:
     string name;
     string help;
     bool hasChoices;
@@ -256,20 +282,24 @@ class opts_t {
     virtual string str() = 0;
     virtual string dump() = 0;
     virtual string type() = 0;
-    virtual string parseMsg ( bool ok ) {
+    virtual string parseMsg ( bool ok, char* v ) {
       stringstream s;
       s << ( ok ? "successfully ": "unsuccessfully " ) << "parsed " 
 	<< "(" << this->type() << ") " 
-	<< this->name << " " << this->str() << "\n";
+	<< this->name << " " << this->str()
+	<< " (from char* \"" << v <<"\")\n";
+      if ( ! ok ) {
+	s << "Error: errno " << errno << ": " << strerror ( errno ) << "\n";
+      }
       printf ( "%s\n", s.str().c_str() ); // cout << s.str();
       return s.str();
     };
   };
 
   template < class T >
-    class opt_basictype_t: public opt_t {
+    struct opt_basictype_t: public opt_t {
 
-  public:
+    // public:
     T *value;
     T defaultValue;
     vector < T > choices;
@@ -316,7 +346,7 @@ class opts_t {
 
     virtual string dump() {
       stringstream s;
-      s << this->name << ": " << *(this->value);
+      s << this->name << "=" << *(this->value);
       return s.str();
     };
       
@@ -342,11 +372,15 @@ class opts_t {
 
     virtual bool parse( char* v ) {
       bool ok = false;
-      stringstream s;
-      s << v; 
+      stringstream s(v);
+      printf ( "Parsing %s value %s for option %s. s.bad = %d\n",
+	       this->type().c_str(), v, this->name.c_str(), s.bad() );
+      
+      // s << v; 
       s >> *(this->value);
-      ok = ! s.bad() && this->checkChoices();
-      this->parseMsg ( ok ); 
+      printf ( "s.bad() = %d %d\n", s.bad(), (s? true: false) );
+      ok = ( ! s.bad() ) && this->checkChoices();
+      this->parseMsg ( ok, v ); 
       return ok;
     };
 
@@ -357,10 +391,12 @@ class opts_t {
 
 };
 
-template <> bool opts_t::opt_basictype_t < bool >::
+// inline to prevent compiler and linker error
+
+template <> inline bool opts_t::opt_basictype_t < bool >::
 isflag () { return true; };
 
-template <> bool opts_t::opt_basictype_t < bool >::
+template <> inline bool opts_t::opt_basictype_t < bool >::
 parse ( char* v ) { 
   stringstream ss;
 
@@ -382,18 +418,20 @@ parse ( char* v ) {
     printf ( "%s", ss.str().c_str() );
   }
   ok = ok && this->checkChoices();
-  this->parseMsg ( ok );
+  this->parseMsg ( ok, v );
   return ok; 
 };
 
-template <> bool opts_t::opt_basictype_t < string >::
-parse ( char* v ) {
-  bool ok = false;
-  if ( v ) {
-  *(this->value) = v;
-  ok = true;
-  }
-  ok = ok && this->checkChoices();
-  this->parseMsg ( ok ); 
-  return ok;
-};
+/* template <> inline bool opts_t::opt_basictype_t < string >:: */
+/* parse ( char* v ) { */
+/*   bool ok = false; */
+/*   if ( v ) { */
+/*   *(this->value) = v; */
+/*   ok = true; */
+/*   } */
+/*   ok = ok && this->checkChoices(); */
+/*   this->parseMsg ( ok, v );  */
+/*   return ok; */
+/* }; */
+
+#endif // _COMMANDLINE_H
