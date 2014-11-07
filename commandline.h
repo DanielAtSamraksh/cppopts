@@ -296,7 +296,7 @@ class opts_t {
     T *value;
     T defaultValue;
     vector < T > choices;
-    opqt_basictype_t ( string n, string h, T* v ):
+    opt_basictype_t ( string n, string h, T* v ):
       opt_t(n, h), value(v), defaultValue(*v) {};
 
     template < class V > bool addChoice ( V x ) {
