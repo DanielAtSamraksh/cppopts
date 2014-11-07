@@ -18,26 +18,28 @@ using std::vector;
 using std::stringstream;
 using std::string;
 
-/// Simple command-line parser modeled after the ns3 CommandLine class. 
+/// Simple command-line parser modeled after ns3 CommandLine.
 ///
-/// Add values to initialize by calling .addValue( string name, T &value ) 
-/// where T is the type of value. This will configure the parser set the variable
-/// "value" when it encounters "name". 
-/// For example: ```opts.addValue( "--count", &count ); opts.parse(argc, argv); ``` 
-/// will set the variable count to 4 when parsing "--count=4" or "--count 4". 
+/// Add values to initialize by calling .addValue( string name, T
+/// &value ) where T is the type of value. This will configure the
+/// parser set the variable "value" when it encounters "name".  For
+/// example: ```opts.addValue( "--count", &count ); opts.parse(argc,
+/// argv); ``` will set the variable count to 4 when parsing
+/// "--count=4" or "--count 4".
 ///
-/// The methods "addValue" and "addChoice" return the parser, so they can be strung
-/// together. See the example program below.
+/// The methods "addValue" and "addChoice" return the parser, so they
+/// can be strung together. See the example program below.
 /// 
 /// The "parse ( int argc, char *argv[] )" method returns true if it
-/// parses with no errors. It is an error to encounter an unknown option.
+/// parses with no errors. It is an error to encounter an unknown
+/// option.
 /// 
-/// Parsing storts from argv[0], so if you're calling parse directly from main,
-/// you'll probably want to skip the first argv (which contains the program name.)
-/// Eg: args.parse(argc-1, argv+1)
+/// Parsing storts from argv[0], so if you're calling parse directly
+/// from main, you'll probably want to skip the first argv (which
+/// contains the program name.)  Eg: args.parse(argc-1, argv+1)
 /// 
-/// Parsing stops when a double dash (--) is encountered and the argc and argv members 
-/// are set where parsing left off.
+/// Parsing stops when a double dash (--) is encountered and the argc
+/// and argv members are set where parsing left off.
 
 #ifdef _example_use_ // this is a documenting example
 #include "commandline.h"
@@ -49,7 +51,7 @@ int main ( int argc, char** argv ) {
 
   int x=1, y=2;  // declare two ints with default values
   float pi=3.14; // declare float with default value
-  string str="default";    // declare string with default value
+c++  string str="default";    // declare string with default value
 
   opts_t opts; // declare an opts_t instance and configure it.
   opts
@@ -78,25 +80,16 @@ int main ( int argc, char** argv ) {
 };
 #endif //  example
 
-// todo:  long and short
-
-/// output the name of a variable's type.
-template < class T >
-string typestr ( T v ) {
-  string t = typeid( v ).name();
-  return typeid( bool ).name() == t?      "bool":
-    typeid( int ).name() == t?            "int":
-    typeid( unsigned ).name() == t?      "unsigned":
-    typeid( unsigned long ).name() == t? "unsigned long":
-    typeid( long ).name() == t?          "long":
-    typeid( double ).name() == t?        "double":
-    typeid( float ).name() == t?         "float":
-    typeid( string ).name() == t?        "string":
-    typeid( char* ).name() == t?         "char*":
-    typeid( char** ).name() == t?        "char**":
-    t;
-};
-
+inline string typestr ( bool v ) { return "bool"; };
+inline string typestr ( int v ) { return "int"; };
+inline string typestr ( unsigned v ) { return "unsigned"; };
+inline string typestr ( unsigned long v ) { return "unsigned long"; };
+inline string typestr ( long v ) { return "long"; };
+inline string typestr ( double v ) { return "double"; };
+inline string typestr ( float v ) { return "float"; };
+inline string typestr ( string v ) { return "string"; };
+inline string typestr ( char* v ) { return "char*"; };
+inline string typestr ( char** v ) { return "char**"; };
 
 class opts_t {
 
@@ -131,8 +124,8 @@ class opts_t {
     opts_t &addChoice ( T c ) { 
     stringstream ss;
 
-    unsigned last = opts.size() - 1;
-    if ( last < 0 ) { 
+    int last = opts.size() - 1;
+    if ( last <  0 ) { 
       ss << "Error: no option to add a choice to.";
       printf ( "%s", ss.str().c_str() );
       exit (1); 
@@ -142,16 +135,10 @@ class opts_t {
       dynamic_cast < opt_basictype_t<T>* > ( opts[ last ] );
     if ( ! opt ) {
       // type mismatch; 
-      // check if it's between string and something compatible (char[])
-      opt_basictype_t < string > *opt2 = 
-	dynamic_cast < opt_basictype_t<string>* > ( opts[ last ] );
-      if ( opt2 ) {
-	opt2->addChoice ( (string) c ); 
-	return *this;
-      }
       ss << "Error: can't add choice because of a type mismatch.\n";
       ss << "Choice " << c << " has type " << typestr ( c )
-	 << " but option " << opts[last] << " has type " << opts[last]->type() << "\n\n";
+	 << " but option " << opts[last]->name
+	 << " has type " << opts[last]->type() << "\n\n";
       printf ( "%s", ss.str().c_str() );
       exit ( 1 );
     }
@@ -180,13 +167,14 @@ class opts_t {
       for ( unsigned j = 0; j < opts.size(); j++ ) {
 	opt_t *o = opts[j];
 
-	printf ( "commandline parse: name = %s\n", o->name.c_str() );
+	// printf ( "commandline parse: name = %s\n", o->name.c_str() );
 
 	if ( o->name == name ) {
 	  if ( value ) {
 	    ok = o->parse ( value );
 	    if ( !ok ) {
-	      ss << "Error parsing value (" << value << ") for option " << name << "\n";
+	      ss << "Error parsing value (" << value << ") "
+		 << "for option " << name << "\n";
 	      printf ( "%s", ss.str().c_str() );
 	      return false;
 	    }
@@ -195,7 +183,8 @@ class opts_t {
 	  else if ( o->isflag ()) {
 	    ok = o->parse ((char*) "true" );
 	    if ( !ok ) {
-	      ss << "Error parsing bool value (true) for option " << name << "\n";
+	      ss << "Error parsing bool value (true) for option " << name
+		 << "\n";
 	      printf ( "%s", ss.str().c_str() );
 	      return false;
 	    }
@@ -204,7 +193,8 @@ class opts_t {
 	  else if ( i + 1 < argc ) {
 	    ok = o->parse ( argv[++i] );
 	    if ( !ok ) {
-	      ss << "Error parsing value (" << argv[i] << ") for option " << name << "\n";
+	      ss << "Error parsing value (" << argv[i] << ") "
+		 << "for option " << name << "\n";
 	      printf ( "%s", ss.str().c_str() );
 	      return false;
 	    }
@@ -276,13 +266,15 @@ class opts_t {
     string help;
     bool hasChoices;
 
-    virtual bool isflag() = 0; // boolean flags are handled differently; they don't have values
+    virtual bool isflag() = 0; // boolean flags are handled
+			       // differently; they don't have values
     virtual bool parse ( char* ) = 0;
     virtual string usage() = 0;
     virtual string str() = 0;
     virtual string dump() = 0;
     virtual string type() = 0;
     virtual string parseMsg ( bool ok, char* v ) {
+      return ""; // skip diagnostics if nothing is wrong.
       stringstream s;
       s << ( ok ? "successfully ": "unsuccessfully " ) << "parsed " 
 	<< "(" << this->type() << ") " 
@@ -290,8 +282,9 @@ class opts_t {
 	<< " (from char* \"" << v <<"\")\n";
       if ( ! ok ) {
 	s << "Error: errno " << errno << ": " << strerror ( errno ) << "\n";
+	printf ( "%s\n", s.str().c_str() ); // cout << s.str();
       }
-      printf ( "%s\n", s.str().c_str() ); // cout << s.str();
+      // printf ( "%s\n", s.str().c_str() ); // cout << s.str();
       return s.str();
     };
   };
@@ -303,7 +296,8 @@ class opts_t {
     T *value;
     T defaultValue;
     vector < T > choices;
-    opt_basictype_t ( string n, string h, T* v ): opt_t(n, h), value(v), defaultValue(*v) {};
+    opqt_basictype_t ( string n, string h, T* v ):
+      opt_t(n, h), value(v), defaultValue(*v) {};
 
     template < class V > bool addChoice ( V x ) {
       this->choices.push_back( x );
@@ -361,8 +355,9 @@ class opts_t {
       for ( unsigned i = 0; i < this->choices.size(); i++ ) {
 	if ( this->choices[i] == *(this->value) ) return true;
       }
-      ss << "Bad value (" << *(this->value) << ") for option " << this->name 
-	 << ". Must be one of:\n";
+      ss << "Bad value (" << *(this->value) << ") "
+	 << "for option " << this->name << ". "
+	 << "Must be one of:\n";
       for ( unsigned i = 0; i < this->choices.size(); i++ ) {
 	ss << "  " << this->choices[i] << "\n";
       }
@@ -371,25 +366,17 @@ class opts_t {
     };
 
     virtual bool parse( char* v ) {
-      bool ok = false;
-      stringstream s(v);
-      printf ( "Parsing %s value %s for option %s. s.bad = %d\n",
-	       this->type().c_str(), v, this->name.c_str(), s.bad() );
-      
-      // s << v; 
-      s >> *(this->value);
-      printf ( "s.bad() = %d %d\n", s.bad(), (s? true: false) );
-      ok = ( ! s.bad() ) && this->checkChoices();
-      this->parseMsg ( ok, v ); 
-      return ok;
+      printf ( "default parser returns false\n" );
+      printf ( "Returning false for type %s.\n", this->type().c_str() );
+      return false;
     };
-
+      
     bool isflag () { return false; };
   }; // end declaration of opt_basictype_t
 
   vector < opt_t* > opts;
 
-};
+}; // end declaration of opts_t
 
 // inline to prevent compiler and linker error
 
@@ -422,16 +409,38 @@ parse ( char* v ) {
   return ok; 
 };
 
-/* template <> inline bool opts_t::opt_basictype_t < string >:: */
-/* parse ( char* v ) { */
-/*   bool ok = false; */
-/*   if ( v ) { */
-/*   *(this->value) = v; */
-/*   ok = true; */
-/*   } */
-/*   ok = ok && this->checkChoices(); */
-/*   this->parseMsg ( ok, v );  */
-/*   return ok; */
-/* }; */
+template <> inline bool opts_t::opt_basictype_t < unsigned >::
+parse ( char* v ) {
+  int i = atoi(v);
+  // printf ("read %d\n", i);
+  if ( i < 0 ) {
+    printf ("unsigned value should not be negative.\n");
+    exit (1);
+  }
+  *(this->value) = i;
+  return true;
+};
+
+template <> inline bool opts_t::opt_basictype_t < int >::
+parse ( char* v ) {
+  int i = atoi(v);
+  // printf ("read %d\n", i);
+  *(this->value) = i;
+  return true;
+};
+
+template <> inline bool opts_t::opt_basictype_t < double >::
+parse ( char* v ) {
+  double i = atof(v);
+  // printf ("read %f\n", i);
+  *(this->value) = i;
+  return true;
+};
+
+template <> inline bool opts_t::opt_basictype_t < string >::
+parse ( char* v ) {
+  *(this->value) = v;
+  return true;
+};
 
 #endif // _COMMANDLINE_H

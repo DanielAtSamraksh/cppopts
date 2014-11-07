@@ -1,4 +1,5 @@
 #include "commandline.h"
+#include "iostream"
 
 using std::stringstream;
 using std::cout;
